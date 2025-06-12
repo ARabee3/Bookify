@@ -16,10 +16,10 @@ namespace Bookify.Contexts
         public DbSet<Quiz> Quizzes { get; set; }
         public DbSet<Chapter> Chapters { get; set; }
         public DbSet<Question> Questions { get; set; }
-
+        
         public DbSet<UserBookRating> UserBookRating { get; set; }
-
-
+        public DbSet<Space> Spaces { get; set; }
+        public DbSet<Participant> Participants { get; set; }
         public DbSet<UserDailyActivityLog> UserDailyActivityLogs { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -195,6 +195,54 @@ namespace Bookify.Contexts
                 .HasForeignKey(s => s.UserID) // Foreign key is UserID (string?)
                 .IsRequired(false)       // UserID is not required (Nullable)
                 .OnDelete(DeleteBehavior.NoAction); // لو المستخدم اتحذف، منعملش حاجة للملخص
+            modelBuilder.Entity<Space>(entity =>
+            {
+                // Set the primary key
+                entity.HasKey(s => s.Id);
+
+                // Configure the Title property
+                entity.Property(s => s.Title)
+                    .IsRequired() // Title cannot be null
+                    .HasMaxLength(100); // Set a max length for the title
+
+                // Configure the one-to-many relationship: One Host (User) can have many Spaces
+                // And one Space has exactly one Host.
+                entity.HasOne(s => s.Host)               // A Space has one Host
+                    .WithMany()                          // A User can host many spaces (we don't need a navigation property on ApplicationUser for this)
+                    .HasForeignKey(s => s.HostId)        // The foreign key is HostId
+                    .IsRequired()                        // A Space must have a host
+                    .OnDelete(DeleteBehavior.Restrict);  // IMPORTANT: Prevent deleting a user if they are hosting an active space.
+                                                         // You might change this to Cascade if you want spaces to be deleted when a user is deleted. Restrict is safer.
+
+                modelBuilder.Entity<Participant>(entity =>
+                {
+                    // You could use a composite primary key if you want to ensure a user can only be in a space once.
+                    // entity.HasKey(p => new { p.UserId, p.SpaceId });
+                    // For simplicity, we'll stick with the integer Id as the primary key.
+
+                    // Configure the one-to-many relationship: A Space has many Participants
+                    entity.HasOne(p => p.Space)                  // A Participant belongs to one Space
+                        .WithMany(s => s.Participants)           // A Space has a collection of Participants
+                        .HasForeignKey(p => p.SpaceId)           // The foreign key is SpaceId
+                        .IsRequired()
+                        .OnDelete(DeleteBehavior.Cascade);       // If a Space is deleted, all its participant records should also be deleted.
+
+                    // Inside the builder.Entity<Participant>(entity => { ... }); block
+                    entity.HasIndex(p => new { p.SpaceId, p.AgoraUid }).IsUnique();
+                    // Configure the one-to-many relationship: A User can be a Participant in many Spaces
+                    entity.HasOne(p => p.User)                   // A Participant is one User
+                        .WithMany()                              // A User can participate in many spaces (again, no navigation property needed on ApplicationUser)
+                        .HasForeignKey(p => p.UserId)            // The foreign key is UserId
+                        .IsRequired()
+                        .OnDelete(DeleteBehavior.Cascade);       // If a User is deleted, their participant records should also be deleted.
+
+                    // Configure the Enum to be stored as a string in the database
+                    // This makes the data more readable in the database ("Host", "Speaker") instead of (0, 1).
+                    entity.Property(p => p.Role)
+                        .HasConversion<string>()
+                        .HasMaxLength(20);
+                });
+            });
         }
     }
 }

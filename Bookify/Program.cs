@@ -1,16 +1,17 @@
 ﻿using Bookify.Contexts;
 using Bookify.Entities;
+using Bookify.Hubs;
 using Bookify.Interfaces;      // <<< مهمة جداً
 using Bookify.Repositories;    // <<< مهمة جداً
 using Bookify.Services;        // <<< مهمة جداً
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Microsoft.OpenApi.Models;
-using System.Collections.Generic; // عشان List<>
 using System; // <<< مهمة عشان Uri
+using System.Collections.Generic; // عشان List<>
+using System.Text;
 
 namespace Bookify
 {
@@ -104,6 +105,10 @@ namespace Bookify
             builder.Services.AddScoped<ISummaryService, SummaryService>();
             builder.Services.AddScoped<IEmailSender, EmailSender>(); // خدمة الإيميل
 
+            builder.Services.AddSingleton<AgoraService>();
+
+            builder.Services.AddSignalR();
+
             // ...
             builder.Services.AddScoped<IProgressRepository, ProgressRepository>();
             builder.Services.AddScoped<IProgressService, ProgressService>();
@@ -133,6 +138,7 @@ namespace Bookify
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Bookify API V1");
                 });
             }
+            app.MapHub<SpaceHub>("/spacehub");
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
