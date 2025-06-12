@@ -12,7 +12,6 @@ namespace Bookify.Contexts
         public DbSet<Recommendation> Recommendations { get; set; }
         public DbSet<Summary> Summaries { get; set; }
         public DbSet<Progress> Progresses { get; set; }
-        public DbSet<UserBookRating> UserBookRatings { get; set; }
         public DbSet<UserQuizResult> UserQuizResults { get; set; }
         public DbSet<Quiz> Quizzes { get; set; }
         public DbSet<Chapter> Chapters { get; set; }
