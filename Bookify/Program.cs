@@ -65,11 +65,11 @@ namespace Bookify
 
             // 4. تسجيل خدمات Identity
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => {
-                options.Password.RequireDigit = false;
-                options.Password.RequiredLength = 6;
+                options.Password.RequireDigit = true;
+                options.Password.RequiredLength = 8;
                 options.Password.RequireLowercase = false;
-                options.Password.RequireUppercase = false;
-                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireNonAlphanumeric = true;
                 options.SignIn.RequireConfirmedAccount = true; // تأكد من هذا الإعداد
             })
             .AddEntityFrameworkStores<AppDbContext>()
@@ -108,7 +108,14 @@ namespace Bookify
             builder.Services.AddSingleton<AgoraService>();
 
             builder.Services.AddSignalR();
-
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowSpecificOrigin",
+                    builder => builder
+                        .AllowAnyOrigin()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod());
+            });
             // ...
             builder.Services.AddScoped<IProgressRepository, ProgressRepository>();
             builder.Services.AddScoped<IProgressService, ProgressService>();
@@ -128,17 +135,19 @@ namespace Bookify
 
             var app = builder.Build();
 
+
+
+            
             // --- بداية إعداد الـ Middleware Pipeline ---
 
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
+            app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Bookify API V1");
                 });
-            }
+            
             app.MapHub<SpaceHub>("/spacehub");
+            app.UseCors("AllowSpecificOrigin");
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
