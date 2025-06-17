@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization; // للوصول لـ [Authorize]
 using Microsoft.AspNetCore.Http;      // للوصول لـ StatusCodes
 using Microsoft.AspNetCore.Identity;  // للوصول لـ UserManager
 using Microsoft.AspNetCore.Mvc;       // للوصول لـ [ApiController], ControllerBase, etc.
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration; // للوصول لـ IConfiguration (لقراءة appsettings)
 using Microsoft.IdentityModel.Tokens; // للوصول لـ SymmetricSecurityKey وغيرها
 using System;                    // للوصول لـ Guid, DateTime, Convert, Exception
@@ -75,12 +76,36 @@ namespace Bookify.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "User creation failed! Please check user details and try again.", Errors = errors });
             }
 
+
+
             // --- بداية الكود الجديد لتأكيد الإيميل ---
             // 1. توليد الـ Email Confirmation Token
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            // 2. بناء الـ Callback URL
-            var confirmationLink = Url.Action(nameof(ConfirmEmail), "Auth", new { userId = user.Id, token = token }, Request.Scheme);
 
+            // 1. Read the base URL from your appsettings.json
+            // This will automatically use the value from appsettings.Development.json when running locally
+            var baseUrl = "http://localhost:5173";
+
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                // Handle the case where the configuration is missing, perhaps throw an exception
+                throw new InvalidOperationException("Frontend BaseUrl is not configured in appsettings.json");
+            }
+
+            // 2. Define your frontend route and parameters
+            var frontendRoute = "/confirm-email";
+            var parameters = new Dictionary<string, string>
+        {
+            { "userId", user.Id.ToString() },
+            { "token", token }
+        };
+
+            // 3. Create the fragment part of the URL
+            var fragment = QueryHelpers.AddQueryString(frontendRoute, parameters);
+
+            // 4. Combine the configured base URL with the fragment
+            // We trim the trailing slash from the base URL to prevent issues like "http://localhost:3000//#/..."
+            var confirmationLink = $"{baseUrl.TrimEnd('/')}#{fragment}";
             // 3. إرسال الإيميل (باستخدام الخدمة اللي عملناها)
             // تأكد من تعديل محتوى الإيميل ليكون أكثر احترافية
             await _emailSender.SendEmailAsync(user.Email, "Confirm your Bookify Account Email",
