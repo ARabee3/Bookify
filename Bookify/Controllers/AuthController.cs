@@ -81,7 +81,6 @@ namespace Bookify.Controllers
             // --- بداية الكود الجديد لتأكيد الإيميل ---
             // 1. توليد الـ Email Confirmation Token
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-
             // 1. Read the base URL from your appsettings.json
             // This will automatically use the value from appsettings.Development.json when running locally
             var baseUrl = "http://localhost:5173";
@@ -209,7 +208,22 @@ namespace Bookify.Controllers
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var resetLink = Url.Action(nameof(ResetPasswordPage), "Auth", new { token = token, email = user.Email }, Request.Scheme); // نفترض صفحة للـ Reset
+            var baseUrl = "http://localhost:5173";
+
+            var frontendRoute = "/reset-password-page";
+            var parameters = new Dictionary<string, string>
+        {
+            { "email", user.Email},
+            { "token", token }
+        };
+
+            // 3. Create the fragment part of the URL
+            var fragment = QueryHelpers.AddQueryString(frontendRoute, parameters);
+
+            // 4. Combine the configured base URL with the fragment
+            // We trim the trailing slash from the base URL to prevent issues like "http://localhost:3000//#/..."
+            var resetLink = $"{baseUrl.TrimEnd('/')}#{fragment}";
+            //var resetLink = Url.Action(nameof(ResetPasswordPage), "Auth", new { token = token, email = user.Email }, Request.Scheme); // نفترض صفحة للـ Reset
             // أو ممكن نرجع الـ token للـ Frontend وهو يبني اللينك لصفحة Reset Password عنده
 
             await _emailSender.SendEmailAsync(user.Email, "Bookify - Reset Your Password",
