@@ -2,7 +2,7 @@
 {
     public class FilterCriteriaDto // ده هنستخدمه كباراميتر للفلترة في الـ Controller
     {
-        public string? Genre { get; set; }
+        public string? Category { get; set; }
         public string? Difficulty { get; set; }
         public string? Language { get; set; }
         public int? MinViews { get; set; }
