@@ -1,31 +1,14 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema; // عشان الـ Foreign Key attribute لو حبينا
-using System; // عشان DateTime
+﻿using Bookify.Entities;
 
-namespace Bookify.Entities
+public class UserBookRating
 {
-    public class UserBookRating
-    {
-        // ممكن نعمل Composite Primary Key من UserID و BookID عشان نضمن إن المستخدم يقيم الكتاب مرة واحدة بس
-        // أو نخلي RatingID هو الـ PK ونعمل Unique Index على UserID و BookID
+    public int RatingID { get; set; } // PK, Identity
+    public string UserID { get; set; } // FK to AspNetUsers, Required, OnDelete: Restrict
+    public int BookID { get; set; } // FK to Books, Required, OnDelete: Cascade
+    public float Rating { get; set; } // Required, Range(1,5) المفروض نحطها هنا
+    public string? Review { get; set; } // Nullable
+    public DateTime RatedAt { get; set; } = DateTime.UtcNow; // المفروض ليها Default value أو تتظبط في الـ Service
 
-        [Key]
-        public int RatingID { get; set; } // أو ممكن نحذفه لو هنستخدم Composite Key
-
-        [Required]
-        public string UserID { get; set; } // Foreign Key للمستخدم (اللي قيم)
-        public virtual ApplicationUser User { get; set; }
-
-        [Required]
-        public int BookID { get; set; } // Foreign Key للكتاب (اللي تم تقييمه)
-        public virtual Book Book { get; set; }
-
-        [Required]
-        [Range(1, 5)] // التقييم من 1 إلى 5 نجوم
-        public float Rating { get; set; } // قيمة التقييم (ممكن تبقى int لو مفيش أنصاص نجوم)
-
-        public string? Review { get; set; } // نص المراجعة (اختياري)
-
-        public DateTime RatedAt { get; set; } = DateTime.UtcNow; // تاريخ ووقت التقييم
-    }
+    public virtual ApplicationUser User { get; set; }
+    public virtual Book Book { get; set; }
 }

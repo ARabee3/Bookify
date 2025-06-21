@@ -1,12 +1,12 @@
 ﻿using Bookify.Contexts;
 using Bookify.Entities;
-using Bookify.Interfaces; // عشان الـ Interface
-using Microsoft.EntityFrameworkCore; // عشان الـ EF Core methods
+using Bookify.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Bookify.Repositories // أو اسم الـ Namespace بتاعك
+namespace Bookify.Repositories
 {
     public class BookRepository : IBookRepository
     {
@@ -19,31 +19,32 @@ namespace Bookify.Repositories // أو اسم الـ Namespace بتاعك
 
         public async Task<IEnumerable<Book>> GetAllAsync()
         {
-            // نفس كود جلب كل الكتب (بدون فلترة هنا)
+            // لا نحتاج Include(b => b.Ratings) هنا لأن BookListItemDto يستخدم Book.Rating مباشرة
             return await _context.Books.ToListAsync();
         }
 
         public async Task<IEnumerable<Book>> GetByCategoryAsync(string category)
         {
-            // نفس كود الفلترة
+            string trimmedCategory = category.Trim().ToLower(); // جهز الباراميتر بره
             return await _context.Books
-                               .Where(b => b.Category != null && b.Category.ToLower() == category.ToLower())
+                               .Where(b => b.Category != null && b.Category.Trim().ToLower() == trimmedCategory)
                                .ToListAsync();
         }
 
         public async Task<Book?> GetByIdAsync(int id)
         {
-            // نفس كود جلب الكتاب بالـ ID
-            return await _context.Books.FindAsync(id);
+            // --- تم التأكيد على الـ Includes المطلوبة لـ BookDetailDto ---
+            return await _context.Books
+                                 .Include(b => b.Chapters) // لجلب Chapters Collection
+                                 .Include(b => b.Ratings)  // لجلب Ratings Collection (UserBookRating)
+                                 .FirstOrDefaultAsync(b => b.BookID == id);
         }
 
-        // Implement Add, Update, Delete later if needed
-
-        //public async Task<List<Book>> GetByTitlesAsync(List<string> titles)
-        //{
-        //    if (titles == null || !titles.Any()) return new List<Book>();
-        //    return await _context.Books.Where(b => b.Title != null && titles.Contains(b.Title)).ToListAsync();
-        //}
-
+        public async Task<List<Book>> GetByTitlesAsync(List<string> titles)
+        {
+            if (titles == null || !titles.Any()) return new List<Book>();
+            // لا نحتاج Include(b => b.Ratings) هنا لأن BookListItemDto يستخدم Book.Rating مباشرة
+            return await _context.Books.Where(b => b.Title != null && titles.Contains(b.Title)).ToListAsync();
+        }
     }
 }

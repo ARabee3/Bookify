@@ -1,19 +1,17 @@
-﻿using Bookify.Entities; // عشان نستخدم Book
+﻿using Bookify.Entities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Bookify.Interfaces // أو اسم الـ Namespace بتاعك لو مختلف
+namespace Bookify.Interfaces
 {
     public interface IBookRepository
     {
-        Task<IEnumerable<Book>> GetAllAsync(); // تجيب كل الكتب
-        Task<IEnumerable<Book>> GetByCategoryAsync(string category); // تجيب الكتب حسب الكاتيجوري
-        Task<Book?> GetByIdAsync(int id); // تجيب كتاب بالـ ID (ممكن يرجع null)
-        // لسه مش محتاجين Add, Update, Delete دلوقتي بس ممكن نضيفهم كـ Structure
+        Task<IEnumerable<Book>> GetAllAsync();
+        Task<IEnumerable<Book>> GetByCategoryAsync(string category);
+        Task<Book?> GetByIdAsync(int id); // يجب أن يقوم هذا بعمل Include للـ Chapters إذا كان الـ Service سيعتمد عليه
+        Task<List<Book>> GetByTitlesAsync(List<string> titles); // <<< تم فك التعليق
         // Task AddAsync(Book book);
         // Task UpdateAsync(Book book);
         // Task DeleteAsync(int id);
-
-        //Task<List<Book>> GetByTitlesAsync(List<string> titles);
     }
 }

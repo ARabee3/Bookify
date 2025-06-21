@@ -105,7 +105,7 @@ namespace Bookify
             builder.Services.AddScoped<ISummaryRepository, SummaryRepository>();
             builder.Services.AddScoped<ISummaryService, SummaryService>();
             builder.Services.AddScoped<IEmailSender, EmailSender>(); // خدمة الإيميل
-
+            builder.Services.AddHttpContextAccessor();
             builder.Services.AddSingleton<AgoraService>();
 
             builder.Services.AddSignalR();
@@ -121,6 +121,39 @@ namespace Bookify
             builder.Services.AddScoped<IProgressRepository, ProgressRepository>();
             builder.Services.AddScoped<IProgressService, ProgressService>();
             builder.Services.AddScoped<IStreakService, StreakService>();
+
+            builder.Services.AddScoped<IRatingRepository, RatingRepository>();
+            builder.Services.AddScoped<IRatingService, RatingService>();
+
+
+
+
+
+
+
+
+            builder.Services.AddHttpClient<IAiRecommendationService, AiRecommendationService>(client =>
+            {
+                string? aiApiBaseUrl = builder.Configuration.GetSection("AiApiSettings")["BaseUrl"];
+                if (string.IsNullOrEmpty(aiApiBaseUrl))
+                {
+                    throw new InvalidOperationException("AI API Base URL is not configured in appsettings.json (AiApiSettings:BaseUrl)");
+                }
+                client.BaseAddress = new Uri(aiApiBaseUrl);
+            });
+
+
+
+
+
+
+
+
+
+
+
+
+
             // (لو عملت IChapterRepository، سجله)
             // ...
 

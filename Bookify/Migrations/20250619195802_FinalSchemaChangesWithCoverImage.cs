@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Bookify.Migrations
 {
     /// <inheritdoc />
-    public partial class initialCreate : Migration
+    public partial class FinalSchemaChangesWithCoverImage : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -169,22 +169,77 @@ namespace Bookify.Migrations
                 {
                     BookID = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    PdfFilePath = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Author = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Category = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Source = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    UploadedBy = table.Column<string>(type: "nvarchar(450)", nullable: true),
-                    TotalPages = table.Column<int>(type: "int", nullable: true)
+                    UploadedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UploaderId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    PdfFilePath = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CoverImagePath = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TotalPages = table.Column<int>(type: "int", nullable: true),
+                    Summary = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Difficulty = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Rating = table.Column<float>(type: "real", nullable: true),
+                    Views = table.Column<int>(type: "int", nullable: true),
+                    Language = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ReleaseYear = table.Column<int>(type: "int", nullable: true),
+                    Prerequisites = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LearningObjectives = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Isbn = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Publisher = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Books", x => x.BookID);
                     table.ForeignKey(
-                        name: "FK_Books_AspNetUsers_UploadedBy",
-                        column: x => x.UploadedBy,
+                        name: "FK_Books_AspNetUsers_UploaderId",
+                        column: x => x.UploaderId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ReadingChallenges",
+                columns: table => new
+                {
+                    ChallengeID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserID = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Year = table.Column<int>(type: "int", nullable: false),
+                    TargetBooksCount = table.Column<int>(type: "int", nullable: false),
+                    BooksCompletedCount = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ReadingChallenges", x => x.ChallengeID);
+                    table.ForeignKey(
+                        name: "FK_ReadingChallenges_AspNetUsers_UserID",
+                        column: x => x.UserID,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Spaces",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    HostId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Spaces", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Spaces_AspNetUsers_HostId",
+                        column: x => x.HostId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -245,38 +300,70 @@ namespace Bookify.Migrations
                         name: "FK_Recommendations_AspNetUsers_UserID",
                         column: x => x.UserID,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Recommendations_Books_BookID",
                         column: x => x.BookID,
                         principalTable: "Books",
-                        principalColumn: "BookID");
+                        principalColumn: "BookID",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "UserBookRating",
+                name: "UserBookRatings",
                 columns: table => new
                 {
                     UserID = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     BookID = table.Column<int>(type: "int", nullable: false),
-                    RatingID = table.Column<int>(type: "int", nullable: false),
                     Rating = table.Column<float>(type: "real", nullable: false),
                     Review = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     RatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_UserBookRating", x => new { x.UserID, x.BookID });
+                    table.PrimaryKey("PK_UserBookRatings", x => new { x.UserID, x.BookID });
                     table.ForeignKey(
-                        name: "FK_UserBookRating_AspNetUsers_UserID",
+                        name: "FK_UserBookRatings_AspNetUsers_UserID",
                         column: x => x.UserID,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_UserBookRating_Books_BookID",
+                        name: "FK_UserBookRatings_Books_BookID",
                         column: x => x.BookID,
                         principalTable: "Books",
-                        principalColumn: "BookID");
+                        principalColumn: "BookID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Participants",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    SpaceId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Role = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    JoinedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    AgoraUid = table.Column<long>(type: "bigint", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Participants", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Participants_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Participants_Spaces_SpaceId",
+                        column: x => x.SpaceId,
+                        principalTable: "Spaces",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -300,12 +387,14 @@ namespace Bookify.Migrations
                         name: "FK_Progresses_AspNetUsers_UserID",
                         column: x => x.UserID,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Progresses_Books_BookID",
                         column: x => x.BookID,
                         principalTable: "Books",
-                        principalColumn: "BookID");
+                        principalColumn: "BookID",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Progresses_Chapters_LastReadChapterID",
                         column: x => x.LastReadChapterID,
@@ -411,16 +500,18 @@ namespace Bookify.Migrations
                         name: "FK_UserQuizResults_AspNetUsers_UserID",
                         column: x => x.UserID,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_UserQuizResults_Quizzes_QuizID",
                         column: x => x.QuizID,
                         principalTable: "Quizzes",
-                        principalColumn: "QuizID");
+                        principalColumn: "QuizID",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Answer",
+                name: "Answers",
                 columns: table => new
                 {
                     AnswerID = table.Column<int>(type: "int", nullable: false)
@@ -431,9 +522,9 @@ namespace Bookify.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Answer", x => x.AnswerID);
+                    table.PrimaryKey("PK_Answers", x => x.AnswerID);
                     table.ForeignKey(
-                        name: "FK_Answer_Questions_QuestionID",
+                        name: "FK_Answers_Questions_QuestionID",
                         column: x => x.QuestionID,
                         principalTable: "Questions",
                         principalColumn: "QuestionID",
@@ -441,8 +532,8 @@ namespace Bookify.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Answer_QuestionID",
-                table: "Answer",
+                name: "IX_Answers_QuestionID",
+                table: "Answers",
                 column: "QuestionID");
 
             migrationBuilder.CreateIndex(
@@ -485,14 +576,25 @@ namespace Bookify.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Books_UploadedBy",
+                name: "IX_Books_UploaderId",
                 table: "Books",
-                column: "UploadedBy");
+                column: "UploaderId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Chapters_BookID",
                 table: "Chapters",
                 column: "BookID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Participants_SpaceId_AgoraUid",
+                table: "Participants",
+                columns: new[] { "SpaceId", "AgoraUid" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Participants_UserId",
+                table: "Participants",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Progresses_BookID",
@@ -525,6 +627,12 @@ namespace Bookify.Migrations
                 column: "ChapterID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ReadingChallenges_UserID_Year",
+                table: "ReadingChallenges",
+                columns: new[] { "UserID", "Year" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Recommendations_BookID",
                 table: "Recommendations",
                 column: "BookID");
@@ -533,6 +641,11 @@ namespace Bookify.Migrations
                 name: "IX_Recommendations_UserID",
                 table: "Recommendations",
                 column: "UserID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Spaces_HostId",
+                table: "Spaces",
+                column: "HostId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Summaries_BookID",
@@ -550,8 +663,8 @@ namespace Bookify.Migrations
                 column: "UserID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserBookRating_BookID",
-                table: "UserBookRating",
+                name: "IX_UserBookRatings_BookID",
+                table: "UserBookRatings",
                 column: "BookID");
 
             migrationBuilder.CreateIndex(
@@ -575,7 +688,7 @@ namespace Bookify.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Answer");
+                name: "Answers");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
@@ -593,7 +706,13 @@ namespace Bookify.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "Participants");
+
+            migrationBuilder.DropTable(
                 name: "Progresses");
+
+            migrationBuilder.DropTable(
+                name: "ReadingChallenges");
 
             migrationBuilder.DropTable(
                 name: "Recommendations");
@@ -602,7 +721,7 @@ namespace Bookify.Migrations
                 name: "Summaries");
 
             migrationBuilder.DropTable(
-                name: "UserBookRating");
+                name: "UserBookRatings");
 
             migrationBuilder.DropTable(
                 name: "UserDailyActivityLogs");
@@ -615,6 +734,9 @@ namespace Bookify.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
+
+            migrationBuilder.DropTable(
+                name: "Spaces");
 
             migrationBuilder.DropTable(
                 name: "Quizzes");
