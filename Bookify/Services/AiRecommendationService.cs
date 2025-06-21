@@ -62,9 +62,16 @@ namespace Bookify.Services
 
             var queryStringBuilder = new StringBuilder("recommendations/filter");
             bool firstParam = true;
-            Action<string, string?> appendQueryParam = (name, value) => { /* نفس الـ Logic بتاع appendQueryParam فوق */ };
+            Action<string, string?> appendQueryParam = (name, value) => {
+                if (value != null)
+                {
+                    queryStringBuilder.Append(firstParam ? "?" : "&");
+                    queryStringBuilder.Append($"{name}={Uri.EscapeDataString(value)}");
+                    firstParam = false;
+                }
+            };
 
-            appendQueryParam("genre", criteria.Genre);
+            appendQueryParam("category", criteria.Category);
             appendQueryParam("difficulty", criteria.Difficulty);
             appendQueryParam("language", criteria.Language);
             appendQueryParam("min_views", criteria.MinViews?.ToString());
@@ -87,7 +94,14 @@ namespace Bookify.Services
 
             var queryStringBuilder = new StringBuilder("recommendations/content");
             bool firstParam = true;
-            Action<string, string?> appendQueryParam = (name, value) => { /* نفس الـ Logic */ };
+            Action<string, string?> appendQueryParam = (name, value) => {
+                if (value != null)
+                {
+                    queryStringBuilder.Append(firstParam ? "?" : "&");
+                    queryStringBuilder.Append($"{name}={Uri.EscapeDataString(value)}");
+                    firstParam = false;
+                }
+            };
 
             appendQueryParam("title", bookTitle);
             appendQueryParam("top_n", topN?.ToString());
