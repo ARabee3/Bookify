@@ -12,13 +12,10 @@ namespace Bookify.Services
 {
     public class AiRecommendationService : IAiRecommendationService
     {
-        private readonly HttpClient _httpClient; // يتم حقنه ويكون الـ BaseAddress معين له من Program.cs
-        // private readonly IConfiguration _configuration; // ممكن نحتاجها لو فيه إعدادات أخرى
-
-        public AiRecommendationService(HttpClient httpClient /*, IConfiguration configuration */)
+        private readonly HttpClient _httpClient;
+        public AiRecommendationService(HttpClient httpClient)
         {
             _httpClient = httpClient;
-            // _configuration = configuration;
         }
 
         public async Task<List<AiBookDto>?> GetRankBasedRecommendationsAsync(float? weightViews = null, float? weightRating = null, int? topN = null)

@@ -74,7 +74,7 @@ namespace Bookify.Contexts
             {
                 // Primary Key مركب (أو RatingID كـ PK عادي، حسب تصميمك الأخير)
                 // إذا كان RatingID هو الـ PK:
-                // entity.HasKey(ubr => ubr.RatingID);
+                entity.HasKey(ubr => ubr.RatingID);
                 // وإذا أردت أن يكون UserID و BookID فريدين معاً (المستخدم يقيم الكتاب مرة واحدة):
                 entity.HasIndex(ubr => new { ubr.UserID, ubr.BookID }).IsUnique();
 
@@ -110,7 +110,7 @@ namespace Bookify.Contexts
                       .WithMany() // Chapter لا يحتاج Collection للـ Summaries
                       .HasForeignKey(s => s.ChapterID)
                       .IsRequired(false) // ChapterID هو Nullable
-                      .OnDelete(DeleteBehavior.Cascade); // أو ClientSetNull
+                      .OnDelete(DeleteBehavior.Restrict); // أو ClientSetNull
 
                 entity.HasOne(s => s.User)
                       .WithMany() // User لا يحتاج Collection للـ Summaries
@@ -147,7 +147,6 @@ namespace Bookify.Contexts
             });
 
 
-            // --- بداية Configurations للـ Progress والـ Activity Log ---
             modelBuilder.Entity<Progress>(entity =>
             {
                 entity.HasIndex(p => new { p.UserID, p.BookID }).IsUnique();
@@ -156,19 +155,19 @@ namespace Bookify.Contexts
                     .WithMany() // ApplicationUser.cs لا يحتاج لـ ICollection<Progress> Progresses بالضرورة
                     .HasForeignKey(p => p.UserID)
                     .IsRequired()
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .OnDelete(DeleteBehavior.Cascade); // Keep CASCADE for User
 
                 entity.HasOne(p => p.Book)
                     .WithMany(b => b.Progresses) // Book.cs يجب أن يحتوي على ICollection<Progress> Progresses
                     .HasForeignKey(p => p.BookID)
                     .IsRequired()
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .OnDelete(DeleteBehavior.Restrict); // Change to RESTRICT to avoid cascade cycle
 
                 entity.HasOne(p => p.LastReadChapter)
                     .WithMany() // Chapter لا يحتاج لـ ICollection<Progress>
                     .HasForeignKey(p => p.LastReadChapterID)
                     .IsRequired(false)
-                    .OnDelete(DeleteBehavior.SetNull); // إذا حذف الشابتر، اجعل الـ FK = NULL
+                    .OnDelete(DeleteBehavior.SetNull); // Keep SET NULL for Chapter
             });
 
             modelBuilder.Entity<UserDailyActivityLog>(entity =>

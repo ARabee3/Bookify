@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Bookify.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250619234730_RemoveUnusedBookProperties")]
-    partial class RemoveUnusedBookProperties
+    [Migration("20250623202445_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -144,6 +144,9 @@ namespace Bookify.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookID"));
 
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("Author")
                         .HasColumnType("nvarchar(max)");
 
@@ -156,11 +159,23 @@ namespace Bookify.Migrations
                     b.Property<string>("Difficulty")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Language")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LearningObjectives")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PdfFilePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Prerequisites")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<float?>("Rating")
                         .HasColumnType("real");
+
+                    b.Property<int?>("ReleaseYear")
+                        .HasColumnType("int");
 
                     b.Property<string>("Source")
                         .IsRequired()
@@ -177,14 +192,16 @@ namespace Bookify.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("UploadedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UploaderId")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("Views")
+                        .HasColumnType("int");
 
                     b.HasKey("BookID");
 
-                    b.HasIndex("UploaderId");
+                    b.HasIndex("ApplicationUserId");
+
+                    b.HasIndex("UploadedBy");
 
                     b.ToTable("Books");
                 });
@@ -216,14 +233,17 @@ namespace Bookify.Migrations
 
             modelBuilder.Entity("Bookify.Entities.Participant", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<long>("AgoraUid")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("datetime2");
@@ -233,16 +253,7 @@ namespace Bookify.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<Guid>("SpaceId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
+                    b.HasKey("UserId", "SpaceId");
 
                     b.HasIndex("SpaceId", "AgoraUid")
                         .IsUnique();
@@ -258,6 +269,9 @@ namespace Bookify.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProgressID"));
 
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<int>("BookID")
                         .HasColumnType("int");
 
@@ -269,6 +283,9 @@ namespace Bookify.Migrations
 
                     b.Property<int?>("LastReadChapterID")
                         .HasColumnType("int");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
@@ -282,11 +299,14 @@ namespace Bookify.Migrations
 
                     b.HasKey("ProgressID");
 
+                    b.HasIndex("ApplicationUserId");
+
                     b.HasIndex("BookID");
 
                     b.HasIndex("LastReadChapterID");
 
-                    b.HasIndex("UserID");
+                    b.HasIndex("UserID", "BookID")
+                        .IsUnique();
 
                     b.ToTable("Progresses");
                 });
@@ -434,6 +454,9 @@ namespace Bookify.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SummaryID"));
 
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<int?>("BookID")
                         .HasColumnType("int");
 
@@ -455,6 +478,8 @@ namespace Bookify.Migrations
 
                     b.HasKey("SummaryID");
 
+                    b.HasIndex("ApplicationUserId");
+
                     b.HasIndex("BookID");
 
                     b.HasIndex("ChapterID");
@@ -462,30 +487,6 @@ namespace Bookify.Migrations
                     b.HasIndex("UserID");
 
                     b.ToTable("Summaries");
-                });
-
-            modelBuilder.Entity("Bookify.Entities.UserBookRating", b =>
-                {
-                    b.Property<string>("UserID")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("BookID")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("RatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<float>("Rating")
-                        .HasColumnType("real");
-
-                    b.Property<string>("Review")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("UserID", "BookID");
-
-                    b.HasIndex("BookID");
-
-                    b.ToTable("UserBookRatings");
                 });
 
             modelBuilder.Entity("Bookify.Entities.UserDailyActivityLog", b =>
@@ -509,6 +510,46 @@ namespace Bookify.Migrations
                         .IsUnique();
 
                     b.ToTable("UserDailyActivityLogs");
+                });
+
+            modelBuilder.Entity("Bookify.Entities.UserNote", b =>
+                {
+                    b.Property<int>("NoteID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NoteID"));
+
+                    b.Property<int?>("BookID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ChapterID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserID")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("NoteID");
+
+                    b.HasIndex("BookID");
+
+                    b.HasIndex("ChapterID");
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("UserNotes");
                 });
 
             modelBuilder.Entity("Bookify.Entities.UserQuizResult", b =>
@@ -674,6 +715,40 @@ namespace Bookify.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("UserBookRating", b =>
+                {
+                    b.Property<int>("RatingID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RatingID"));
+
+                    b.Property<int>("BookID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<float>("Rating")
+                        .HasColumnType("real");
+
+                    b.Property<string>("Review")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserID")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("RatingID");
+
+                    b.HasIndex("BookID");
+
+                    b.HasIndex("UserID", "BookID")
+                        .IsUnique();
+
+                    b.ToTable("UserBookRatings");
+                });
+
             modelBuilder.Entity("Bookify.Entities.Answer", b =>
                 {
                     b.HasOne("Bookify.Entities.Question", "Question")
@@ -687,9 +762,14 @@ namespace Bookify.Migrations
 
             modelBuilder.Entity("Bookify.Entities.Book", b =>
                 {
-                    b.HasOne("Bookify.Entities.ApplicationUser", "Uploader")
+                    b.HasOne("Bookify.Entities.ApplicationUser", null)
                         .WithMany("UploadedBooks")
-                        .HasForeignKey("UploaderId");
+                        .HasForeignKey("ApplicationUserId");
+
+                    b.HasOne("Bookify.Entities.ApplicationUser", "Uploader")
+                        .WithMany()
+                        .HasForeignKey("UploadedBy")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Uploader");
                 });
@@ -726,18 +806,23 @@ namespace Bookify.Migrations
 
             modelBuilder.Entity("Bookify.Entities.Progress", b =>
                 {
+                    b.HasOne("Bookify.Entities.ApplicationUser", null)
+                        .WithMany("Progresses")
+                        .HasForeignKey("ApplicationUserId");
+
                     b.HasOne("Bookify.Entities.Book", "Book")
                         .WithMany("Progresses")
                         .HasForeignKey("BookID")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Bookify.Entities.Chapter", "LastReadChapter")
                         .WithMany()
-                        .HasForeignKey("LastReadChapterID");
+                        .HasForeignKey("LastReadChapterID")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Bookify.Entities.ApplicationUser", "User")
-                        .WithMany("Progresses")
+                        .WithMany()
                         .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -818,41 +903,28 @@ namespace Bookify.Migrations
 
             modelBuilder.Entity("Bookify.Entities.Summary", b =>
                 {
+                    b.HasOne("Bookify.Entities.ApplicationUser", null)
+                        .WithMany("Summaries")
+                        .HasForeignKey("ApplicationUserId");
+
                     b.HasOne("Bookify.Entities.Book", "Book")
                         .WithMany("Summaries")
-                        .HasForeignKey("BookID");
+                        .HasForeignKey("BookID")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Bookify.Entities.Chapter", "Chapter")
                         .WithMany()
                         .HasForeignKey("ChapterID")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Bookify.Entities.ApplicationUser", "User")
-                        .WithMany("Summaries")
-                        .HasForeignKey("UserID");
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Book");
 
                     b.Navigation("Chapter");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Bookify.Entities.UserBookRating", b =>
-                {
-                    b.HasOne("Bookify.Entities.Book", "Book")
-                        .WithMany("Ratings")
-                        .HasForeignKey("BookID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Bookify.Entities.ApplicationUser", "User")
-                        .WithMany("BookRatings")
-                        .HasForeignKey("UserID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Book");
 
                     b.Navigation("User");
                 });
@@ -864,6 +936,29 @@ namespace Bookify.Migrations
                         .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Bookify.Entities.UserNote", b =>
+                {
+                    b.HasOne("Bookify.Entities.Book", "Book")
+                        .WithMany()
+                        .HasForeignKey("BookID");
+
+                    b.HasOne("Bookify.Entities.Chapter", "Chapter")
+                        .WithMany()
+                        .HasForeignKey("ChapterID");
+
+                    b.HasOne("Bookify.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Book");
+
+                    b.Navigation("Chapter");
 
                     b.Navigation("User");
                 });
@@ -936,6 +1031,25 @@ namespace Bookify.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("UserBookRating", b =>
+                {
+                    b.HasOne("Bookify.Entities.Book", "Book")
+                        .WithMany("Ratings")
+                        .HasForeignKey("BookID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Bookify.Entities.ApplicationUser", "User")
+                        .WithMany("BookRatings")
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Book");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Bookify.Entities.ApplicationUser", b =>
