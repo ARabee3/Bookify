@@ -1,22 +1,24 @@
-﻿using Bookify.Contexts;
-using Bookify.DTOs;
-using Bookify.Entities;
+﻿using Bookify.DTOs; // <<< تأكد من وجود UserStreakDto هنا
+using Bookify.Entities; // <<< تأكد من وجود ApplicationUser هنا
 using Bookify.Interfaces;
-using Microsoft.AspNetCore.Identity; // عشان UserManager
+using Microsoft.AspNetCore.Identity;
 using System;
+using System.Linq; // <<< لإضافة Select في حالة الأخطاء
 using System.Threading.Tasks;
+// using Bookify.Contexts; // لم نعد بحاجة لـ AppDbContext هنا مباشرة إذا اعتمدنا على UserManager.UpdateAsync فقط
 
 namespace Bookify.Services
 {
     public class StreakService : IStreakService
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly AppDbContext _context; // أو ممكن نعمل Unit of Work لو حابين
+        // لم نعد بحاجة لـ AppDbContext هنا إذا كانت UserManager.UpdateAsync كافية
+        // private readonly AppDbContext _context;
 
-        public StreakService(UserManager<ApplicationUser> userManager, AppDbContext context)
+        public StreakService(UserManager<ApplicationUser> userManager /*, AppDbContext context */)
         {
             _userManager = userManager;
-            _context = context;
+            // _context = context;
         }
 
         public async Task UpdateStreakAsync(string userId, DateTime activityDate)
@@ -24,47 +26,60 @@ namespace Bookify.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
-                // المفروض المستخدم يكون موجود لو وصل لهنا
-                Console.WriteLine($"StreakService: User not found with ID {userId}");
-                return;
+                Console.WriteLine($"StreakService: User not found with ID {userId} during streak update.");
+                return; // لا يمكن تحديث الستريك لمستخدم غير موجود
             }
 
-            var today = activityDate.Date; // ناخد التاريخ فقط
+            var today = activityDate.Date; // نهتم بالتاريخ فقط
 
-            // لو مفيش نشاط سابق متسجل للـ Streak، أو لو تاريخ آخر نشاط للـ Streak مش النهارده
+            // إذا لم يكن هناك تاريخ نشاط سابق للستريك، أو إذا كان تاريخ آخر نشاط للستريك ليس اليوم
+            // فهذا يعني أننا بحاجة لتقييم الستريك لهذا اليوم.
             if (user.LastStreakActivityDate == null || user.LastStreakActivityDate.Value.Date != today)
             {
-                // نشوف هل نشاط النهارده بيكمل الـ Streak بتاع امبارح
-                if (user.LastStreakActivityDate.HasValue && user.LastStreakActivityDate.Value.Date == today.AddDays(-1))
+                bool streakLogicApplied = false;
+
+                if (user.LastStreakActivityDate == null)
                 {
-                    // نعم، ده يوم متتالي
+                    // هذا أول نشاط يسجل للستريك على الإطلاق لهذا المستخدم
+                    user.CurrentReadingStreak = 1;
+                    streakLogicApplied = true;
+                }
+                else if (user.LastStreakActivityDate.Value.Date == today.AddDays(-1))
+                {
+                    // النشاط الحالي يكمل الستريك من اليوم السابق
                     user.CurrentReadingStreak++;
+                    streakLogicApplied = true;
                 }
-                else // لو لأ (يعني الـ Streak انكسر أو ده أول نشاط خالص)
+                else if (user.LastStreakActivityDate.Value.Date < today.AddDays(-1))
                 {
-                    user.CurrentReadingStreak = 1; // نبدأ Streak جديد من 1
+                    // مر يوم أو أكثر بدون نشاط، الستريك انكسر. نبدأ ستريك جديد بـ 1 لهذا اليوم.
+                    user.CurrentReadingStreak = 1;
+                    streakLogicApplied = true;
                 }
+                // الحالة الأخيرة: user.LastStreakActivityDate.Value.Date == today
+                // وهذه الحالة تم التعامل معها بالشرط الخارجي (user.LastStreakActivityDate.Value.Date != today)
+                // لذا لن ندخل هنا إذا كان آخر نشاط مسجل هو اليوم بالفعل.
 
-                // نحدث أطول Streak لو الـ Current بقى أكبر
-                if (user.CurrentReadingStreak > user.LongestReadingStreak)
+                if (streakLogicApplied)
                 {
-                    user.LongestReadingStreak = user.CurrentReadingStreak;
-                }
+                    // تحديث أطول ستريك إذا كان الستريك الحالي أكبر
+                    if (user.CurrentReadingStreak > user.LongestReadingStreak)
+                    {
+                        user.LongestReadingStreak = user.CurrentReadingStreak;
+                    }
+                    // تحديث تاريخ آخر نشاط أثر في الستريك
+                    user.LastStreakActivityDate = today;
 
-                // نحدث تاريخ آخر نشاط للـ Streak بتاريخ النهارده
-                user.LastStreakActivityDate = today;
-
-                // نحفظ التغييرات في المستخدم
-                // الـ UserManager.UpdateAsync هيحفظ التغييرات في جدول AspNetUsers
-                // لو الـ Context مش بيعمل SaveChanges لوحده هنا، ممكن نحتاج نعملها
-                var updateResult = await _userManager.UpdateAsync(user);
-                if (!updateResult.Succeeded)
-                {
-                    Console.WriteLine($"StreakService: Failed to update user streak for UserID {userId}. Errors: {string.Join(", ", updateResult.Errors.Select(e => e.Description))}");
-                    // ممكن نعمل Log للأخطاء دي
+                    var updateResult = await _userManager.UpdateAsync(user);
+                    if (!updateResult.Succeeded)
+                    {
+                        Console.WriteLine($"StreakService: Failed to update user streak for UserID {userId}. Errors: {string.Join(", ", updateResult.Errors.Select(e => e.Description))}");
+                        // Consider logging these errors more formally
+                    }
                 }
             }
-            // لو تاريخ آخر نشاط للـ Streak هو النهارده، منعملش حاجة (لأن الـ Streak اتحسب مرة للنهارده)
+            // إذا كان LastStreakActivityDate هو نفسه تاريخ اليوم، فهذا يعني أن الستريك قد تم حسابه بالفعل لهذا اليوم
+            // ولا يلزم إجراء أي تحديث إضافي للستريك نفسه.
         }
 
         public async Task<UserStreakDto?> GetUserStreakAsync(string userId)
@@ -72,27 +87,31 @@ namespace Bookify.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
-                return null;
+                return null; // المستخدم غير موجود
             }
 
-            // نتأكد لو الـ Streak الحالي المفروض يتصفر لو فات أكتر من يوم على آخر نشاط
-            // دي خطوة مهمة عشان لو المستخدم مرجعش تاني يوم، الـ Current Streak يرجع صفر
-            // إلا لو هو فتح التطبيق النهارده بس لسه معملش Log للـ Activity من الـ Progress
+            // التحقق مما إذا كان يجب إعادة تعيين الستريك الحالي إلى صفر
+            // إذا كان آخر نشاط مسجل للستريك أقدم من الأمس (أي مر يوم كامل بدون نشاط)
             if (user.LastStreakActivityDate.HasValue && user.LastStreakActivityDate.Value.Date < DateTime.UtcNow.Date.AddDays(-1))
             {
-                // فات أكتر من يوم على آخر نشاط، يبقى الـ Current Streak اتكسر
-                if (user.CurrentReadingStreak != 0) // نحدثه بس لو مكنش صفر أصلاً
+                if (user.CurrentReadingStreak != 0) // فقط إذا لم يكن بالفعل صفرًا
                 {
                     user.CurrentReadingStreak = 0;
-                    await _userManager.UpdateAsync(user); // نحفظ التغيير
+                    // لا حاجة لتحديث LastStreakActivityDate هنا، لأنه يعكس آخر يوم كان فيه نشاط فعلي
+                    var resetResult = await _userManager.UpdateAsync(user);
+                    if (!resetResult.Succeeded)
+                    {
+                        Console.WriteLine($"StreakService: Failed to reset user streak for UserID {userId}. Errors: {string.Join(", ", resetResult.Errors.Select(e => e.Description))}");
+                    }
                 }
             }
-
 
             return new UserStreakDto
             {
                 CurrentStreak = user.CurrentReadingStreak,
                 LongestStreak = user.LongestReadingStreak
+                // يمكن إضافة LastStreakActivityDate هنا إذا كان الـ Frontend يحتاجها
+                // LastActivityDate = user.LastStreakActivityDate
             };
         }
     }

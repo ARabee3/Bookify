@@ -126,10 +126,11 @@ namespace Bookify
             builder.Services.AddScoped<IRatingService, RatingService>();
 
 
+            builder.Services.AddScoped<IUserNoteRepository, UserNoteRepository>();
 
+            builder.Services.AddScoped<IUserNoteService, UserNoteService>();
 
-
-
+            builder.Services.AddScoped<IChapterRepository, ChapterRepository>(); // <<< تسجيل الشابتر ريبوزيتوري
 
 
             builder.Services.AddHttpClient<IAiRecommendationService, AiRecommendationService>(client =>

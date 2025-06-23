@@ -20,6 +20,8 @@ namespace Bookify.Repositories
         public async Task<Progress?> GetUserProgressForBookAsync(string userId, int bookId)
         {
             return await _context.Progresses
+                                 .Include(p => p.Book)          // مهم للـ DTO
+                                 .Include(p => p.LastReadChapter) // مهم للـ DTO
                                  .FirstOrDefaultAsync(p => p.UserID == userId && p.BookID == bookId);
         }
 
@@ -27,25 +29,33 @@ namespace Bookify.Repositories
         {
             return await _context.Progresses
                                  .Where(p => p.UserID == userId)
-                                 .Include(p => p.Book) // مهم عشان نجيب تفاصيل الكتاب مع التقدم
-                                                       // .Include(p => p.LastReadChapter) // لو حابب تجيب تفاصيل الشابتر كمان
-                                 .OrderByDescending(p => p.StartDate) // نرتب بالأحدث
+                                 .Include(p => p.Book)
+                                 .Include(p => p.LastReadChapter)
+                                 .OrderByDescending(p => p.LastUpdatedAt)
                                  .ToListAsync();
         }
 
-        public async Task AddProgressAsync(Progress progress)
+        public async Task<IEnumerable<Progress>> GetCurrentlyReadingProgressAsync(string userId)
         {
-            await _context.Progresses.AddAsync(progress);
-            // لا يوجد SaveChanges هنا، الـ Service هي المسؤولة
+            return await _context.Progresses
+                                .Where(p => p.UserID == userId && p.Status == CompletionStatus.InProgress)
+                                .Include(p => p.Book) // نحتاج تفاصيل الكتاب
+                                                      // .Include(p => p.LastReadChapter) // قد لا نحتاجها هنا لو DTO بسيط
+                                .OrderByDescending(p => p.LastUpdatedAt)
+                                .ToListAsync();
         }
 
-        public Task UpdateProgressAsync(Progress progress)
+
+        public async Task AddProgressAsync(Progress progress) // <<< تأكد من الاسم والباراميتر والـ Return Type و async
         {
-            // EF Core بيعمل Track للتغييرات، مجرد تعديل الـ entity في الـ Service كافي
-            // لكن لو عايز تكون صريح، ممكن تعمل كده:
+            await _context.Progresses.AddAsync(progress);
+            // لا يوجد SaveChanges هنا
+        }
+
+        public void Update(Progress progress)
+        {
+            // EF Core يتتبع التغييرات. وضعناها هنا للتأكيد على نية التحديث.
             _context.Progresses.Update(progress);
-            // أو _context.Entry(progress).State = EntityState.Modified;
-            return Task.CompletedTask; // لا يوجد SaveChanges هنا
         }
     }
 }

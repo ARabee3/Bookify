@@ -51,5 +51,7 @@ namespace Bookify.Entities
         public virtual ICollection<UserBookRating> Ratings { get; set; } = new List<UserBookRating>(); // <<< اسم الـ Collection هنا
         public virtual ICollection<Progress> Progresses { get; set; } = new List<Progress>();
         public virtual ICollection<Recommendation> Recommendations { get; set; } = new List<Recommendation>();
+
+   
     }
 }
