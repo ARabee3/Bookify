@@ -1,4 +1,6 @@
-﻿namespace Bookify.DTOs.Ai
+﻿using System.ComponentModel;
+
+namespace Bookify.DTOs.Ai
 {
     public class FilterCriteriaDto // ده هنستخدمه كباراميتر للفلترة في الـ Controller
     {
@@ -9,6 +11,11 @@
         public float? MinRating { get; set; }
         public string? Author { get; set; }
         public int? RecentYears { get; set; }
-        public int? TopN { get; set; } // الـ AI API ممكن متكونش بتستخدمه للفلتر، بس ممكن نضيفه لو هنفلتر بعدين
+
+        [DefaultValue(1)]
+        public int PageNumber { get; set; } = 1;
+
+        [DefaultValue(10)]
+        public int PageSize { get; set; } = 10;
     }
 }

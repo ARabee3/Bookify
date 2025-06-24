@@ -27,26 +27,15 @@ namespace Bookify.Services
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<IEnumerable<BookListItemDto>> GetAllBooksAsync(string? category)
+        public async Task<PaginatedFilteredBooksDto> GetAllBooksAsync(int pageNumber, int pageSize)
         {
-            IEnumerable<Book> booksFromRepo;
-            if (!string.IsNullOrEmpty(category))
-            {
-                booksFromRepo = await _bookRepository.GetByCategoryAsync(category);
-            }
-            else
-            {
-                booksFromRepo = await _bookRepository.GetAllAsync();
-            }
+            var totalBooksCount = await _bookRepository.GetTotalCountAsync();
+            var booksFromRepo = await _bookRepository.GetAllAsync(pageNumber, pageSize);
 
             var request = _httpContextAccessor.HttpContext?.Request;
-            string? baseUrl = null;
-            if (request != null)
-            {
-                baseUrl = $"{request.Scheme}://{request.Host}{request.PathBase}";
-            }
+            string? baseUrl = (request != null) ? $"{request.Scheme}://{request.Host}{request.PathBase}" : null;
 
-            return booksFromRepo.Select(book => new BookListItemDto
+            var bookListDtos = booksFromRepo.Select(book => new BookListItemDto
             {
                 BookID = book.BookID,
                 Title = book.Title,
@@ -64,6 +53,14 @@ namespace Bookify.Services
                 LearningObjectives = book.LearningObjectives,
                 TotalPages = book.TotalPages
             }).ToList();
+
+            return new PaginatedFilteredBooksDto
+            {
+                TotalBooks = totalBooksCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                Books = bookListDtos
+            };
         }
 
         public async Task<BookDetailDto?> GetBookByIdAsync(int id, string? currentUserId = null)

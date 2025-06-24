@@ -1,6 +1,7 @@
 ﻿using Bookify.DTOs.Ai;
 using Bookify.Interfaces;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -13,9 +14,13 @@ namespace Bookify.Services
     public class AiRecommendationService : IAiRecommendationService
     {
         private readonly HttpClient _httpClient;
-        public AiRecommendationService(HttpClient httpClient)
+        private readonly ILogger<AiRecommendationService> _logger;
+
+        public AiRecommendationService(HttpClient httpClient, ILogger<AiRecommendationService> logger)
         {
             _httpClient = httpClient;
+            _logger = logger;
+
         }
 
         public async Task<List<AiBookDto>?> GetRankBasedRecommendationsAsync(float? weightViews = null, float? weightRating = null, int? topN = null)
@@ -68,7 +73,7 @@ namespace Bookify.Services
                 }
             };
 
-            appendQueryParam("category", criteria.Category);
+            appendQueryParam("genre", criteria.Category);
             appendQueryParam("difficulty", criteria.Difficulty);
             appendQueryParam("language", criteria.Language);
             appendQueryParam("min_views", criteria.MinViews?.ToString());
@@ -89,7 +94,7 @@ namespace Bookify.Services
         {
             if (string.IsNullOrWhiteSpace(bookTitle)) return null;
 
-            var queryStringBuilder = new StringBuilder("recommendations/content");
+            var queryStringBuilder = new StringBuilder("/recommendations/content");
             bool firstParam = true;
             Action<string, string?> appendQueryParam = (name, value) => {
                 if (value != null)

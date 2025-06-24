@@ -8,7 +8,7 @@ namespace Bookify.Interfaces
     public interface IBookService
     {
         // --- تم تعديل الـ Return Type هنا ---
-        Task<IEnumerable<BookListItemDto>> GetAllBooksAsync(string? category);
+        Task<PaginatedFilteredBooksDto> GetAllBooksAsync(int pageNumber, int pageSize);
         // ------------------------------------
 
         Task<BookDetailDto?> GetBookByIdAsync(int id, string? currentUserId = null);

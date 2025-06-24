@@ -1,12 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Bookify.DTOs;
+﻿using Bookify.DTOs;
 using Bookify.DTOs.Ai; // <<< مهمة جداً
 using Bookify.Interfaces;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic; // <<< مهمة جداً
+using System.ComponentModel;
 using System.Linq;              // <<< مهمة جداً
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 
 namespace Bookify.Controllers
 {
@@ -27,15 +28,24 @@ namespace Bookify.Controllers
 
         // --- Endpoint لجلب كل الكتب ---
         [HttpGet]
-        public async Task<IActionResult> GetAllBooksAsync(string? category = null)
+        [ProducesResponseType(typeof(PaginatedFilteredBooksDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetAllBooksAsync(
+            [FromQuery, DefaultValue(1)] int pageNumber = 1,
+            [FromQuery, DefaultValue(10)] int pageSize = 10)
         {
             try
             {
-                var books = await _bookService.GetAllBooksAsync(category);
-                return Ok(books); // الآن ترجع List<BookListItemDto>
+                // Basic validation
+                if (pageNumber < 1) pageNumber = 1;
+                if (pageSize < 1) pageSize = 10;
+
+                var paginatedBooks = await _bookService.GetAllBooksAsync(pageNumber, pageSize);
+                return Ok(paginatedBooks);
             }
             catch (Exception ex)
             {
+                // Use a real logger in production
                 Console.WriteLine($"Error getting books: {ex.Message}");
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving books.");
             }
@@ -102,29 +112,63 @@ namespace Bookify.Controllers
         [HttpGet("recommendations/filter")]
         public async Task<IActionResult> GetAiFilteredBooksAsync([FromQuery] FilterCriteriaDto criteria)
         {
+            if (criteria.PageNumber < 1) criteria.PageNumber = 1;
+            if (criteria.PageSize < 1) criteria.PageSize = 10;
+
             try
             {
+                // 1. Get the FULL list of filtered books from the AI service
                 var aiFilteredBooks = await _aiRecommendationService.GetFilteredBooksFromAiAsync(criteria);
+
+                var emptyResponse = new PaginatedFilteredBooksDto
+                {
+                    TotalBooks = 0,
+                    PageNumber = criteria.PageNumber,
+                    PageSize = criteria.PageSize,
+                    Books = new List<BookListItemDto>()
+                };
+
                 if (aiFilteredBooks == null || !aiFilteredBooks.Any())
                 {
-                    return Ok(new List<BookListItemDto>());
+                    return Ok(emptyResponse);
                 }
 
+                // 2. Extract the titles to search for in our local database
                 var filteredTitles = aiFilteredBooks
                                      .Select(b => b.Title)
                                      .Where(t => !string.IsNullOrEmpty(t))
                                      .Select(t => t!)
                                      .ToList();
+
                 if (!filteredTitles.Any())
                 {
-                    return Ok(new List<BookListItemDto>());
+                    return Ok(emptyResponse);
                 }
 
-                var booksFromOurDb = await _bookService.GetBooksByTitlesAsync(filteredTitles);
-                return Ok(booksFromOurDb);
+                // 3. Get the full book details from our database
+                var allBooksFromDb = await _bookService.GetBooksByTitlesAsync(filteredTitles);
+
+                // 4. Apply pagination to the list we retrieved from OUR database
+                var totalBooks = allBooksFromDb.Count;
+                var paginatedBooks = allBooksFromDb
+                                        .Skip((criteria.PageNumber - 1) * criteria.PageSize)
+                                        .Take(criteria.PageSize)
+                                        .ToList();
+
+                // 5. Build the final paginated response object
+                var finalResponse = new PaginatedFilteredBooksDto
+                {
+                    TotalBooks = totalBooks,
+                    PageNumber = criteria.PageNumber,
+                    PageSize = criteria.PageSize,
+                    Books = paginatedBooks
+                };
+
+                return Ok(finalResponse);
             }
             catch (Exception ex)
             {
+                // Assuming you have logging configured
                 Console.WriteLine($"Error getting AI filtered books: {ex.Message}");
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while fetching filtered books.");
             }
