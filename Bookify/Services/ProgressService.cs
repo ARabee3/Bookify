@@ -2,11 +2,11 @@
 using Bookify.DTOs;
 using Bookify.Entities;
 using Bookify.Interfaces;
-using Microsoft.AspNetCore.Http;    // عشان IHttpContextAccessor
-using Microsoft.EntityFrameworkCore; // عشان AnyAsync, FindAsync لو الـ Repository مبيعملش كل حاجة
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Linq;                  // عشان Select, Any, FirstOrDefault
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Bookify.Services
@@ -15,30 +15,30 @@ namespace Bookify.Services
     {
         private readonly IProgressRepository _progressRepository;
         private readonly IBookRepository _bookRepository;
-        private readonly IChapterRepository _chapterRepository; // تأكد إنك عملت Inject لدي
-        private readonly AppDbContext _context; // للـ UserDailyActivityLogs و SaveChanges
-        // private readonly IStreakService _streakService; // معلق مؤقتاً
+        private readonly IChapterRepository _chapterRepository;
+        private readonly AppDbContext _context;
+        private readonly IStreakService _streakService;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public ProgressService(
             IProgressRepository progressRepository,
             IBookRepository bookRepository,
-            IChapterRepository chapterRepository, // تأكد من إضافتها هنا
+            IChapterRepository chapterRepository,
             AppDbContext context,
-            // IStreakService streakService, // معلق مؤقتاً
+            IStreakService streakService,
             IHttpContextAccessor httpContextAccessor)
         {
             _progressRepository = progressRepository;
             _bookRepository = bookRepository;
-            _chapterRepository = chapterRepository; // تأكد من إضافتها هنا
+            _chapterRepository = chapterRepository;
             _context = context;
-            // _streakService = streakService; // معلق مؤقتاً
+            _streakService = streakService;
             _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<ProgressDto?> UpdateOrCreateUserProgressAsync(string userId, UpdateProgressDto progressDto)
         {
-            var book = await _bookRepository.GetByIdAsync(progressDto.BookID); // يفترض أن هذا يجلب الكتاب مع Chapters
+            var book = await _bookRepository.GetByIdAsync(progressDto.BookID);
             if (book == null)
             {
                 throw new KeyNotFoundException($"Book with ID {progressDto.BookID} not found.");
@@ -121,21 +121,14 @@ namespace Bookify.Services
             {
                 await _progressRepository.AddProgressAsync(existingProgress);
             }
-            // EF Core يتتبع التغييرات، Update صريح قد لا يكون مطلوباً إذا الـ Entity متتبعة
-            // else if (progressActuallyChanged)
-            // {
-            //     await _progressRepository.UpdateProgressAsync(existingProgress);
-            // }
 
-
-            // --- تم تعديل الشرط هنا ---
             bool shouldLogActivity = (progressActuallyChanged && (existingProgress.Status == CompletionStatus.InProgress || existingProgress.Status == CompletionStatus.Completed)) ||
                                      (isNewProgress && (existingProgress.Status == CompletionStatus.InProgress || existingProgress.Status == CompletionStatus.Completed));
 
             if (shouldLogActivity)
             {
                 await LogUserActivityAsync(userId);
-                // await _streakService.UpdateStreakAsync(userId, DateTime.UtcNow.Date); // معلق مؤقتاً
+                await _streakService.UpdateStreakAsync(userId, DateTime.UtcNow.Date);
             }
 
             await _context.SaveChangesAsync();
@@ -158,7 +151,7 @@ namespace Bookify.Services
 
         public async Task<IEnumerable<BookProgressDto>> GetCurrentlyReadingBooksAsync(string userId)
         {
-            var progresses = await _progressRepository.GetCurrentlyReadingProgressAsync(userId); // استخدام الريبو
+            var progresses = await _progressRepository.GetCurrentlyReadingProgressAsync(userId);
 
             var request = _httpContextAccessor.HttpContext?.Request;
             string? baseUrl = null;
@@ -167,7 +160,7 @@ namespace Bookify.Services
             return progresses.Select(p => new BookProgressDto
             {
                 BookID = p.BookID,
-                Title = p.Book?.Title, // يعتمد على Include في الريبو
+                Title = p.Book?.Title,
                 Author = p.Book?.Author,
                 Category = p.Book?.Category,
                 CoverImageUrl = !string.IsNullOrEmpty(p.Book?.CoverImagePath) && baseUrl != null
@@ -183,35 +176,41 @@ namespace Bookify.Services
         private async Task LogUserActivityAsync(string userId)
         {
             var today = DateTime.UtcNow.Date;
-            // استخدام _context مباشرة هنا مقبول أو يمكن عمل Repository لـ UserDailyActivityLog
             bool activityLoggedToday = await _context.UserDailyActivityLogs
                                             .AnyAsync(log => log.UserID == userId && log.ActivityDate == today);
             if (!activityLoggedToday)
             {
                 var newLog = new UserDailyActivityLog { UserID = userId, ActivityDate = today };
                 await _context.UserDailyActivityLogs.AddAsync(newLog);
-                // SaveChanges سيتم في الميثود الأساسية
+                // SaveChanges will be called by the calling method (UpdateOrCreateUserProgressAsync)
             }
         }
 
+        // --- تم تعديل هذه الميثود لإضافة BookPdfFileUrl ---
         private ProgressDto? MapToProgressDto(Progress? progress)
         {
             if (progress == null) return null;
 
             var request = _httpContextAccessor.HttpContext?.Request;
             string? baseUrl = null;
-            if (request != null) baseUrl = $"{request.Scheme}://{request.Host}{request.PathBase}";
+            if (request != null)
+            {
+                baseUrl = $"{request.Scheme}://{request.Host}{request.PathBase}";
+            }
 
             return new ProgressDto
             {
                 ProgressID = progress.ProgressID,
                 BookID = progress.BookID,
-                BookTitle = progress.Book?.Title, // يعتمد على Include في الريبو
+                BookTitle = progress.Book?.Title,
                 BookCoverImageUrl = !string.IsNullOrEmpty(progress.Book?.CoverImagePath) && baseUrl != null
                                     ? $"{baseUrl}{progress.Book.CoverImagePath}"
                                     : null,
+                BookPdfFileUrl = !string.IsNullOrEmpty(progress.Book?.PdfFilePath) && baseUrl != null // <<< تمت الإضافة هنا
+                                    ? $"{baseUrl}{progress.Book.PdfFilePath}"                       // <<< تمت الإضافة هنا
+                                    : null,                                                          // <<< تمت الإضافة هنا
                 LastReadChapterID = progress.LastReadChapterID,
-                LastReadChapterTitle = progress.LastReadChapter?.Title, // يعتمد على Include في الريبو
+                LastReadChapterTitle = progress.LastReadChapter?.Title,
                 CompletionPercentage = progress.CompletionPercentage,
                 Status = progress.Status,
                 StartDate = progress.StartDate,
@@ -220,5 +219,6 @@ namespace Bookify.Services
                 LastUpdatedAt = progress.LastUpdatedAt
             };
         }
+        // --- نهاية التعديل ---
     }
 }

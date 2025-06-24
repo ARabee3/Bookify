@@ -1,17 +1,18 @@
-﻿using Bookify.DTOs; // عشان UserStreakDto
-using Bookify.Interfaces; // عشان IStreakService
-using Microsoft.AspNetCore.Authorization; // عشان [Authorize]
+﻿using Bookify.DTOs;         // عشان UserStreakDto
+using Bookify.Interfaces;    // عشان IStreakService
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims; // عشان ClaimTypes
+using System;               // عشان Exception
+using System.Security.Claims;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http; // عشان StatusCodes
 
 namespace Bookify.Controllers
 {
-    [Route("api/[controller]")] // المسار هيبقى /api/streaks
+    [Route("api/[controller]")] // المسار: /api/streak (لو اسم الكلاس StreakController)
     [ApiController]
-    [Authorize] // <<< كل الـ Endpoints هنا هتتطلب تسجيل دخول
-    public class StreakController : ControllerBase
+    [Authorize]
+    public class StreakController : ControllerBase // تم تغيير الاسم من StreaksController
     {
         private readonly IStreakService _streakService;
 
@@ -20,39 +21,35 @@ namespace Bookify.Controllers
             _streakService = streakService;
         }
 
-        // --- Endpoint لجلب بيانات الـ Streak للمستخدم الحالي ---
-        // GET /api/streaks/my
+        // GET /api/streak/my
         [HttpGet("my")]
-        public async Task<IActionResult> GetMyStreakAsync()
+        public async Task<IActionResult> GetMyStreakAsync() // تم تعديل اسم الميثود
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null)
             {
-                // هذا لا يجب أن يحدث بسبب [Authorize]
-                return Unauthorized("User ID could not be determined from token.");
+                return Unauthorized(new { Message = "User ID could not be determined from token." });
             }
 
             try
             {
                 var streakDto = await _streakService.GetUserStreakAsync(userId);
 
+                // الـ Service الآن ترجع DTO بقيم صفرية إذا كان المستخدم جديداً أو الستريك مكسور
+                // ولا ترجع null إلا إذا كان المستخدم نفسه غير موجود (وهو ما لا يجب أن يحدث هنا بسبب Authorize)
                 if (streakDto == null)
                 {
-                    // حالة أن المستخدم لم يتم العثور عليه (نادرة جداً لو الـ token سليم)
-                    // أو ممكن الـ Service ترجع DTO بقيم صفرية لو المستخدم جديد ولسه ملوش streak
-                    // حالياً، GetUserStreakAsync في Service بترجع DTO بقيم صفرية لو المستخدم جديد
-                    // لكن لو رجعت null، ممكن نرجع NotFound أو Ok مع قيم صفرية.
-                    // دعنا نفترض أن الـ Service دائماً سترجع DTO طالما المستخدم موجود.
-                    return Ok(new UserStreakDto { CurrentStreak = 0, LongestStreak = 0 }); // قيمة افتراضية
+                    // هذا يعتبر خطأ غير متوقع في الـ Service Logic
+                    Console.WriteLine($"StreakService.GetUserStreakAsync returned null for user {userId} which should not happen.");
+                    return StatusCode(StatusCodes.Status500InternalServerError, "Could not retrieve streak data.");
                 }
 
                 return Ok(streakDto);
             }
             catch (Exception ex)
             {
-                // يفضل استخدام Logger حقيقي
-                Console.WriteLine($"Error getting user streak for UserID {userId}: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving your reading streak.");
+                Console.WriteLine($"Error in GetMyStreakAsync for UserID {userId}: {ex.ToString()}");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred while retrieving your reading streak.");
             }
         }
     }
