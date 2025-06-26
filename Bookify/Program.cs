@@ -133,6 +133,20 @@ namespace Bookify
             builder.Services.AddScoped<IChapterRepository, ChapterRepository>(); // <<< تسجيل الشابتر ريبوزيتوري
 
 
+
+
+            // في Program.cs، مع باقي تسجيلات الـ Scoped
+            builder.Services.AddScoped<IProfileService, ProfileService>();
+
+
+
+            // ... (تسجيلات أخرى) ...
+            builder.Services.AddScoped<IUserLibraryRepository, UserLibraryRepository>();
+            builder.Services.AddScoped<IUserLibraryService, UserLibraryService>();
+            // ...
+
+
+
             builder.Services.AddHttpClient<IAiRecommendationService, AiRecommendationService>(client =>
             {
                 string? aiApiBaseUrl = builder.Configuration.GetSection("AiApiSettings")["BaseUrl"];

@@ -20,8 +20,8 @@ namespace Bookify.Repositories
         public async Task<Progress?> GetUserProgressForBookAsync(string userId, int bookId)
         {
             return await _context.Progresses
-                                 .Include(p => p.Book)          // مهم للـ DTO
-                                 .Include(p => p.LastReadChapter) // مهم للـ DTO
+                                 .Include(p => p.Book) // Book مهم للـ DTO
+                                                       // .Include(p => p.LastReadChapter) // <<< تم الحذف
                                  .FirstOrDefaultAsync(p => p.UserID == userId && p.BookID == bookId);
         }
 
@@ -30,7 +30,7 @@ namespace Bookify.Repositories
             return await _context.Progresses
                                  .Where(p => p.UserID == userId)
                                  .Include(p => p.Book)
-                                 .Include(p => p.LastReadChapter)
+                                 // .Include(p => p.LastReadChapter) // <<< تم الحذف
                                  .OrderByDescending(p => p.LastUpdatedAt)
                                  .ToListAsync();
         }
@@ -39,22 +39,18 @@ namespace Bookify.Repositories
         {
             return await _context.Progresses
                                 .Where(p => p.UserID == userId && p.Status == CompletionStatus.InProgress)
-                                .Include(p => p.Book) // نحتاج تفاصيل الكتاب
-                                                      // .Include(p => p.LastReadChapter) // قد لا نحتاجها هنا لو DTO بسيط
+                                .Include(p => p.Book)
                                 .OrderByDescending(p => p.LastUpdatedAt)
                                 .ToListAsync();
         }
 
-
-        public async Task AddProgressAsync(Progress progress) // <<< تأكد من الاسم والباراميتر والـ Return Type و async
+        public async Task AddAsync(Progress progress) // تم تعديل الاسم
         {
             await _context.Progresses.AddAsync(progress);
-            // لا يوجد SaveChanges هنا
         }
 
-        public void Update(Progress progress)
+        public void Update(Progress progress) // تم تعديل الاسم
         {
-            // EF Core يتتبع التغييرات. وضعناها هنا للتأكيد على نية التحديث.
             _context.Progresses.Update(progress);
         }
     }

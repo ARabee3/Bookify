@@ -3,7 +3,7 @@ using Bookify.DTOs;
 using Bookify.Entities;
 using Bookify.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore; // للـ AnyAsync
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +15,7 @@ namespace Bookify.Services
     {
         private readonly IProgressRepository _progressRepository;
         private readonly IBookRepository _bookRepository;
-        private readonly IChapterRepository _chapterRepository;
+        // private readonly IChapterRepository _chapterRepository; // <<< تم الحذف
         private readonly AppDbContext _context;
         private readonly IStreakService _streakService;
         private readonly IHttpContextAccessor _httpContextAccessor;
@@ -23,14 +23,14 @@ namespace Bookify.Services
         public ProgressService(
             IProgressRepository progressRepository,
             IBookRepository bookRepository,
-            IChapterRepository chapterRepository,
+            // IChapterRepository chapterRepository, // <<< تم الحذف
             AppDbContext context,
             IStreakService streakService,
             IHttpContextAccessor httpContextAccessor)
         {
             _progressRepository = progressRepository;
             _bookRepository = bookRepository;
-            _chapterRepository = chapterRepository;
+            // _chapterRepository = chapterRepository; // <<< تم الحذف
             _context = context;
             _streakService = streakService;
             _httpContextAccessor = httpContextAccessor;
@@ -38,20 +38,16 @@ namespace Bookify.Services
 
         public async Task<ProgressDto?> UpdateOrCreateUserProgressAsync(string userId, UpdateProgressDto progressDto)
         {
-            var book = await _bookRepository.GetByIdAsync(progressDto.BookID);
+            var book = await _bookRepository.GetByIdAsync(progressDto.BookID); // يجب أن يجلب TotalPages
             if (book == null)
             {
                 throw new KeyNotFoundException($"Book with ID {progressDto.BookID} not found.");
             }
-
-            Chapter? chapterEntity = null;
-            if (progressDto.LastReadChapterID.HasValue)
+            if (!book.TotalPages.HasValue || book.TotalPages.Value <= 0)
             {
-                chapterEntity = await _chapterRepository.GetByIdAsync(progressDto.LastReadChapterID.Value);
-                if (chapterEntity == null || chapterEntity.BookID != progressDto.BookID)
-                {
-                    throw new ArgumentException($"Chapter with ID {progressDto.LastReadChapterID.Value} not found or does not belong to book ID {progressDto.BookID}.");
-                }
+                // لا يمكن حساب النسبة بدون إجمالي الصفحات، يمكن الاعتماد على النسبة المرسلة فقط
+                // أو رمي خطأ إذا كان تتبع الصفحات مطلوباً
+                // For now, we'll proceed if CompletionPercentage is provided.
             }
 
             var existingProgress = await _progressRepository.GetUserProgressForBookAsync(userId, progressDto.BookID);
@@ -65,36 +61,36 @@ namespace Bookify.Services
                     BookID = progressDto.BookID,
                     StartDate = DateTime.UtcNow,
                     Status = CompletionStatus.NotStarted,
-                    LastUpdatedAt = DateTime.UtcNow
+                    LastUpdatedAt = DateTime.UtcNow,
+                    CompletionPercentage = 0
                 };
             }
 
             bool progressActuallyChanged = false;
 
-            if (progressDto.LastReadChapterID.HasValue && existingProgress.LastReadChapterID != progressDto.LastReadChapterID.Value)
+            // 1. تحديث LastReadPageNumber (إذا تم إرساله وتغير)
+            if (progressDto.LastReadPageNumber.HasValue && existingProgress.LastReadPageNumber != progressDto.LastReadPageNumber.Value)
             {
-                existingProgress.LastReadChapterID = progressDto.LastReadChapterID.Value;
+                existingProgress.LastReadPageNumber = progressDto.LastReadPageNumber.Value;
                 progressActuallyChanged = true;
             }
 
+            // 2. تحديد CompletionPercentage
+            float newCalculatedPercentage = existingProgress.CompletionPercentage;
+
             if (progressDto.CompletionPercentage.HasValue)
             {
-                float newPercentage = Math.Clamp(progressDto.CompletionPercentage.Value, 0, 100);
-                if (Math.Abs(existingProgress.CompletionPercentage - newPercentage) > 0.01f)
-                {
-                    existingProgress.CompletionPercentage = newPercentage;
-                    progressActuallyChanged = true;
-                }
+                newCalculatedPercentage = Math.Clamp(progressDto.CompletionPercentage.Value, 0, 100);
             }
-            else if (progressDto.LastReadChapterID.HasValue && chapterEntity != null && book.Chapters != null && book.Chapters.Any())
+            else if (progressDto.LastReadPageNumber.HasValue && book.TotalPages.HasValue && book.TotalPages.Value > 0)
             {
-                float calculatedPercentage = ((float)chapterEntity.ChapterNumber / book.Chapters.Count()) * 100;
-                calculatedPercentage = Math.Min(calculatedPercentage, 100);
-                if (Math.Abs(existingProgress.CompletionPercentage - calculatedPercentage) > 0.01f)
-                {
-                    existingProgress.CompletionPercentage = calculatedPercentage;
-                    progressActuallyChanged = true;
-                }
+                newCalculatedPercentage = Math.Clamp(((float)progressDto.LastReadPageNumber.Value / book.TotalPages.Value) * 100, 0, 100);
+            }
+
+            if (Math.Abs(existingProgress.CompletionPercentage - newCalculatedPercentage) > 0.01f)
+            {
+                existingProgress.CompletionPercentage = newCalculatedPercentage;
+                progressActuallyChanged = true;
             }
 
             if (progressActuallyChanged || isNewProgress)
@@ -104,7 +100,8 @@ namespace Bookify.Services
                     existingProgress.Status = CompletionStatus.Completed;
                     existingProgress.EndDate = existingProgress.EndDate ?? DateTime.UtcNow;
                 }
-                else if (existingProgress.CompletionPercentage > 0 || existingProgress.LastReadChapterID.HasValue)
+                // نعتبره InProgress إذا كانت النسبة > 0 أو تم تحديد صفحة (ما لم يكن مكتمل)
+                else if (existingProgress.CompletionPercentage > 0 || progressDto.LastReadPageNumber.HasValue)
                 {
                     existingProgress.Status = CompletionStatus.InProgress;
                     existingProgress.EndDate = null;
@@ -119,7 +116,7 @@ namespace Bookify.Services
 
             if (isNewProgress)
             {
-                await _progressRepository.AddProgressAsync(existingProgress);
+                await _progressRepository.AddAsync(existingProgress);
             }
 
             bool shouldLogActivity = (progressActuallyChanged && (existingProgress.Status == CompletionStatus.InProgress || existingProgress.Status == CompletionStatus.Completed)) ||
@@ -152,7 +149,6 @@ namespace Bookify.Services
         public async Task<IEnumerable<BookProgressDto>> GetCurrentlyReadingBooksAsync(string userId)
         {
             var progresses = await _progressRepository.GetCurrentlyReadingProgressAsync(userId);
-
             var request = _httpContextAccessor.HttpContext?.Request;
             string? baseUrl = null;
             if (request != null) baseUrl = $"{request.Scheme}://{request.Host}{request.PathBase}";
@@ -167,7 +163,7 @@ namespace Bookify.Services
                                 ? $"{baseUrl}{p.Book.CoverImagePath}"
                                 : null,
                 CompletionPercentage = p.CompletionPercentage,
-                LastReadChapterID = p.LastReadChapterID,
+                LastReadPageNumber = p.LastReadPageNumber, // <<< تمت الإضافة
                 TotalPages = p.Book?.TotalPages,
                 LastUpdatedAt = p.LastUpdatedAt
             });
@@ -182,21 +178,15 @@ namespace Bookify.Services
             {
                 var newLog = new UserDailyActivityLog { UserID = userId, ActivityDate = today };
                 await _context.UserDailyActivityLogs.AddAsync(newLog);
-                // SaveChanges will be called by the calling method (UpdateOrCreateUserProgressAsync)
             }
         }
 
-        // --- تم تعديل هذه الميثود لإضافة BookPdfFileUrl ---
         private ProgressDto? MapToProgressDto(Progress? progress)
         {
             if (progress == null) return null;
-
             var request = _httpContextAccessor.HttpContext?.Request;
             string? baseUrl = null;
-            if (request != null)
-            {
-                baseUrl = $"{request.Scheme}://{request.Host}{request.PathBase}";
-            }
+            if (request != null) baseUrl = $"{request.Scheme}://{request.Host}{request.PathBase}";
 
             return new ProgressDto
             {
@@ -206,11 +196,10 @@ namespace Bookify.Services
                 BookCoverImageUrl = !string.IsNullOrEmpty(progress.Book?.CoverImagePath) && baseUrl != null
                                     ? $"{baseUrl}{progress.Book.CoverImagePath}"
                                     : null,
-                BookPdfFileUrl = !string.IsNullOrEmpty(progress.Book?.PdfFilePath) && baseUrl != null // <<< تمت الإضافة هنا
-                                    ? $"{baseUrl}{progress.Book.PdfFilePath}"                       // <<< تمت الإضافة هنا
-                                    : null,                                                          // <<< تمت الإضافة هنا
-                LastReadChapterID = progress.LastReadChapterID,
-                LastReadChapterTitle = progress.LastReadChapter?.Title,
+                BookPdfFileUrl = !string.IsNullOrEmpty(progress.Book?.PdfFilePath) && baseUrl != null
+                                    ? $"{baseUrl}{progress.Book.PdfFilePath}"
+                                    : null,
+                LastReadPageNumber = progress.LastReadPageNumber, // <<< تمت الإضافة
                 CompletionPercentage = progress.CompletionPercentage,
                 Status = progress.Status,
                 StartDate = progress.StartDate,
@@ -219,6 +208,5 @@ namespace Bookify.Services
                 LastUpdatedAt = progress.LastUpdatedAt
             };
         }
-        // --- نهاية التعديل ---
     }
 }

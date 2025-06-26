@@ -1,11 +1,15 @@
-﻿namespace Bookify.DTOs;
+﻿using System.ComponentModel.DataAnnotations;
 
-public class UpdateProfileDto
+namespace Bookify.DTOs
 {
-    // المستخدم ممكن يغير دول مثلاً
-    public int? Age { get; set; } // خليه Nullable عشان لو مش عايز يغيره
-    public string? Specialization { get; set; }
-    public string? Level { get; set; }
-    public string? Interest { get; set; }
-    // مش هنسمح بتغيير الإيميل أو الـ Username من هنا (دي عمليات أعقد)
+    public class UpdateProfileDto
+    {
+        public string? Username { get; set; } // <<< تم إضافة هذه
+
+        public int? Age { get; set; }
+        public string? Specialization { get; set; }
+        public string? Level { get; set; }
+        public string? Interest { get; set; }
+        // Bio تم حذفه بناءً على طلبك السابق
+    }
 }

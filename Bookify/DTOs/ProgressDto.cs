@@ -1,5 +1,4 @@
-﻿// في مجلد Dtos
-using Bookify.Entities;
+﻿using Bookify.Entities;
 using System;
 
 namespace Bookify.DTOs
@@ -10,9 +9,10 @@ namespace Bookify.DTOs
         public int BookID { get; set; }
         public string? BookTitle { get; set; }
         public string? BookCoverImageUrl { get; set; }
-        public string? BookPdfFileUrl { get; set; } // <<< تم إضافة هذه الخاصية
-        public int? LastReadChapterID { get; set; }
-        public string? LastReadChapterTitle { get; set; }
+        public string? BookPdfFileUrl { get; set; }
+        // public int? LastReadChapterID { get; set; } // <<< تم الحذف
+        // public string? LastReadChapterTitle { get; set; } // <<< تم الحذف
+        public int? LastReadPageNumber { get; set; } // <<< تمت الإضافة (إذا كانت موجودة في Progress Entity)
         public float CompletionPercentage { get; set; }
         public CompletionStatus Status { get; set; }
         public DateTime? StartDate { get; set; }

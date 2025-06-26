@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http; // عشان IHttpContextAccessor لو هنبني الـ URL هنا
+﻿using System; // لإضافة DateTime
+
 namespace Bookify.DTOs
 {
     public class BookProgressDto
@@ -9,9 +10,9 @@ namespace Bookify.DTOs
         public string? Category { get; set; }
         public string? CoverImageUrl { get; set; }
         public float CompletionPercentage { get; set; }
-        public int? LastReadChapterID { get; set; }
-        // public string? LastReadChapterTitle { get; set; } // (اختياري)
+        // public int? LastReadChapterID { get; set; } // <<< تم الحذف
+        public int? LastReadPageNumber { get; set; } // <<< تمت الإضافة (إذا كانت موجودة في Progress Entity)
         public int? TotalPages { get; set; }
-        public DateTime LastUpdatedAt { get; set; } // لعرض آخر نشاط على الكتاب
+        public DateTime LastUpdatedAt { get; set; }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Bookify.Entities
 {
@@ -17,22 +16,23 @@ namespace Bookify.Entities
         public int ProgressID { get; set; }
 
         [Required]
-        public string UserID { get; set; } // Foreign Key to ApplicationUser
+        public string UserID { get; set; }
         public virtual ApplicationUser User { get; set; }
 
         [Required]
-        public int BookID { get; set; }   // Foreign Key to Book
+        public int BookID { get; set; }
         public virtual Book Book { get; set; }
 
         public float CompletionPercentage { get; set; } // From 0 to 100
-
         public CompletionStatus Status { get; set; } = CompletionStatus.NotStarted;
 
-        public int? LastReadChapterID { get; set; } // Nullable if progress is by page or general
-        public virtual Chapter? LastReadChapter { get; set; }
+        // public int? LastReadChapterID { get; set; } // <<< تم الحذف
+        // public virtual Chapter? LastReadChapter { get; set; } // <<< تم الحذف
 
-        public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow; // To track the last update
-        public DateTime? StartDate { get; set; } // When the user started the book
-        public DateTime? EndDate { get; set; }   // When the user completed the book
+        public int? LastReadPageNumber { get; set; } // <<< أبقينا على هذا (أو يمكن إضافته لو لم يكن موجوداً)
+
+        public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
     }
 }
