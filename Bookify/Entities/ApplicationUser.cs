@@ -11,7 +11,8 @@ namespace Bookify.Entities
         public string? Specialization { get; set; }
         public string? Level { get; set; }
         public string? Interest { get; set; }
-
+        // داخل كلاس ApplicationUser.cs
+        public string? ProfilePicturePath { get; set; } // مسار صورة البروفايل (Nullable)
         public int CurrentReadingStreak { get; set; } = 0; // الـ Streak الحالي (عدد الأيام المتتالية)
         public int LongestReadingStreak { get; set; } = 0; // أطول Streak حققه المستخدم
         public DateTime? LastStreakActivityDate { get; set; } // آخر تاريخ تم فيه نشاط وحساب الـ Streak 
