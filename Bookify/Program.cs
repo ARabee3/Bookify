@@ -135,6 +135,17 @@ namespace Bookify
 
 
 
+
+            
+            builder.Services.AddScoped<ISummaryRepository, SummaryRepository>();
+            builder.Services.AddScoped<IAiContentService, AiContentService>(); // دي بتاعة الـ AI
+            builder.Services.AddScoped<ISummaryService, SummaryService>();
+            // IWebHostEnvironment و IHttpContextAccessor بيتم تسجيلهم غالباً مع AddControllers، لكن ممكن نضيفهم صراحة لو محتاجين
+
+
+
+
+
             // في Program.cs، مع باقي تسجيلات الـ Scoped
             builder.Services.AddScoped<IProfileService, ProfileService>();
 
@@ -156,6 +167,48 @@ namespace Bookify
                 }
                 client.BaseAddress = new Uri(aiApiBaseUrl);
             });
+
+
+
+
+
+
+
+
+
+
+
+            // في Program.cs، مع باقي تسجيلات الـ Dependencies
+
+            // --- تسجيل خدمات التكامل مع الـ AI API ---
+            // تسجيل خدمة الـ Recommendation
+            builder.Services.AddHttpClient<IAiRecommendationService, AiRecommendationService>(client =>
+            {
+                string? aiApiBaseUrl = builder.Configuration.GetSection("AiApiSettings")["BaseUrl"];
+                if (string.IsNullOrEmpty(aiApiBaseUrl))
+                {
+                    throw new InvalidOperationException("AI API Base URL is not configured in appsettings.json (AiApiSettings:BaseUrl)");
+                }
+                client.BaseAddress = new Uri(aiApiBaseUrl);
+            });
+
+            // --- ضيف السطر ده هنا ---
+            // تسجيل خدمة الـ Content (Summaries, Quizzes)
+            builder.Services.AddHttpClient<IAiContentService, AiContentService>(client =>
+            {
+                string? aiApiBaseUrl = builder.Configuration.GetSection("AiApiSettings")["BaseUrl"]; // <<< استخدم نفس الـ Base URL
+                if (string.IsNullOrEmpty(aiApiBaseUrl))
+                {
+                    throw new InvalidOperationException("AI API Base URL is not configured in appsettings.json (AiApiSettings:BaseUrl)");
+                }
+                client.BaseAddress = new Uri(aiApiBaseUrl);
+            });
+            // ----------------------------
+
+            // ... (باقي تسجيلات الـ Services زي IBookService, IProgressService, etc.) ...
+
+
+
 
 
 

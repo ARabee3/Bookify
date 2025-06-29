@@ -2,21 +2,14 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Bookify.Interfaces // أو اسم الـ Namespace بتاعك
+namespace Bookify.Interfaces
 {
     public interface ISummaryRepository
     {
-        // لجلب كل ملخصات الشابترات لكتاب معين
-        Task<IEnumerable<Summary>> GetSummariesByBookIdAsync(int bookId);
-
-        // لجلب ملخص شابتر معين بالـ ID بتاعه
-        Task<Summary?> GetSummaryByChapterIdAsync(int chapterId);
-
-        // لإضافة ملخص جديد (هنستخدمها في الـ Service بعدين)
         Task AddAsync(Summary summary);
-
-        // ممكن نضيف Update/Delete لو احتجناهم بعدين
-        // Task UpdateAsync(Summary summary);
-        // Task DeleteAsync(int summaryId);
+        // Task<Summary?> GetByIdAsync(int summaryId); // ممكن نضيفها لو احتجناها
+        Task<IEnumerable<Summary>> GetSummariesForBookAsync(int bookId); // <<< تم إضافتها
+        Task<Summary?> GetSummaryForChapterAsync(int chapterId); // <<< تم إضافتها
+        // Update و Delete ممكن نضيفهم لو احتجناهم
     }
 }

@@ -1,94 +1,56 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Bookify.Entities; // أو DTOs لو الـ Service هترجع DTOs
-using Bookify.Interfaces; // <<< مهمة جداً عشان ISummaryService
-using System;
-using System.Security.Claims; // <<< نحتاجها فقط لو AddBookSummaryAsync مفعلة
+using Bookify.Interfaces;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization; // <<< نحتاجها فقط لو AddBookSummaryAsync مفعلة
-using Microsoft.AspNetCore.Http; // <<< نحتاجها فقط لو AddBookSummaryAsync مفعلة
-// using Bookify.Contexts; // لم نعد بحاجة للـ DbContext هنا مباشرة
-// using Microsoft.EntityFrameworkCore; // لم نعد بحاجة لها هنا
-// using System.Linq; // لم نعد بحاجة لها هنا
-// using System.Collections.Generic; // الـ Service هي اللي بترجع List/IEnumerable
+using Microsoft.AspNetCore.Authorization;
+using System;
+using Microsoft.AspNetCore.Http;
 
 namespace Bookify.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[controller]")] // المسار: /api/Summaries
     [ApiController]
     public class SummariesController : ControllerBase
     {
-        // --- الاعتماد على الـ Service Interface ---
         private readonly ISummaryService _summaryService;
 
-        // --- حقن الـ Service في الـ Constructor ---
         public SummariesController(ISummaryService summaryService)
         {
             _summaryService = summaryService;
         }
 
-        /*
-        // --- تم تعليق ميثود إضافة ملخص عام للكتاب مؤقتاً ---
-        [Authorize]
-        [HttpPost("ForBook/{bookId}")]
-        public async Task<IActionResult> AddBookSummaryAsync(int bookId, [FromBody] string content)
+        [HttpGet("book/{bookId}")]
+        public async Task<IActionResult> GetSummariesForBook(int bookId)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) { return Unauthorized("User ID not found."); }
-
-            if (string.IsNullOrWhiteSpace(content)) { return BadRequest("Summary content required."); }
-
-            try
-            {
-                var createdSummary = await _summaryService.AddBookSummaryAsync(bookId, content, userId);
-                return StatusCode(StatusCodes.Status201Created, createdSummary);
-            }
-            catch (ArgumentException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error adding summary: {ex.Message}"); // يفضل Logger
-                return StatusCode(500, "An error occurred while adding summary.");
-            }
-        }
-        */
-
-        // --- Endpoint لجلب كل ملخصات الشابترات لكتاب معين ---
-        // (تستدعي الـ Service) - متاحة للجميع
-        [HttpGet("ByBook/{bookId}")]
-        public async Task<IActionResult> GetChapterSummariesForBookAsync(int bookId)
-        {
-            try
-            {
-                var summaries = await _summaryService.GetChapterSummariesForBookAsync(bookId);
-                return Ok(summaries);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting summaries for book {bookId}: {ex.Message}"); // Logger
-                return StatusCode(500, "An error occurred while retrieving summaries.");
-            }
+            var summaries = await _summaryService.GetSummariesForBookAsync(bookId);
+            return Ok(summaries);
         }
 
-        // --- Endpoint لجلب ملخص شابتر معين ---
-        // (تستدعي الـ Service) - متاحة للجميع
-        [HttpGet("ByChapter/{chapterId}")]
-        public async Task<IActionResult> GetSummaryForChapterAsync(int chapterId)
+        [HttpGet("chapter/{chapterId}")]
+        public async Task<IActionResult> GetSummaryForChapter(int chapterId)
+        {
+            var summary = await _summaryService.GetSummaryForChapterAsync(chapterId);
+            if (summary is null) // <<< استخدام is null أكثر أماناً
+            {
+                return NotFound($"No summary found for chapter with ID {chapterId}.");
+            }
+            return Ok(summary);
+        }
+
+        [HttpPost("generate/chapter/{chapterId}")]
+        [Authorize] // Admin-only?
+        public async Task<IActionResult> GenerateSummary(int chapterId)
         {
             try
             {
-                var summary = await _summaryService.GetSummaryForChapterAsync(chapterId);
-                if (summary == null)
-                {
-                    return NotFound($"No summary found for chapter with ID {chapterId}.");
-                }
-                return Ok(summary);
+                var summaryDto = await _summaryService.GenerateAndSaveSummaryForChapterAsync(chapterId);
+                return Ok(summaryDto); // نرجع Ok مع الملخص الجديد/المحدث
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error getting summary for chapter {chapterId}: {ex.Message}"); // Logger
-                return StatusCode(500, "An error occurred while retrieving summary.");
+                // Log exception
+                Console.WriteLine($"Error generating summary for chapter {chapterId}: {ex.Message}");
+                // نرجع رسالة خطأ مناسبة للـ Frontend
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
     }

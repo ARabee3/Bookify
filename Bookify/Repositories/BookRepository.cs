@@ -1,4 +1,5 @@
 ﻿using Bookify.Contexts;
+using Bookify.DTOs; // <<< لإضافة BookFilterDto
 using Bookify.Entities;
 using Bookify.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -17,36 +18,30 @@ namespace Bookify.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Book>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<(IEnumerable<Book> books, int totalCount)> GetAllFilteredAndPaginatedAsync(BookFilterDto filter)
         {
-            return await _context.Books
-                                 .OrderBy(b => b.BookID) 
-                                 .Skip((pageNumber - 1) * pageSize)
-                                 .Take(pageSize)
-                                 .ToListAsync();
+            var query = _context.Books.AsQueryable();
 
-            
+            // تطبيق الفلترة
+            if (!string.IsNullOrEmpty(filter.Category))
+            {
+                query = query.Where(b => b.Category != null && b.Category.ToLower() == filter.Category.ToLower());
+            }
+            // يمكن إضافة فلاتر أخرى هنا
+
+            // حساب العدد الكلي (قبل الـ Pagination)
+            var totalCount = await query.CountAsync();
+
+            // تطبيق الـ Pagination
+            var books = await query
+                              .Skip((filter.PageNumber - 1) * filter.PageSize)
+                              .Take(filter.PageSize)
+                              .ToListAsync();
+
+            return (books, totalCount);
         }
 
-        public async Task<int> GetTotalCountAsync()
-        {
-            return await _context.Books.CountAsync();
-        }
-
-
-        public async Task<IEnumerable<Book>> GetByCategoryAsync(string category)
-        {
-            // تنظيف وتوحيد حالة الباراميتر القادم لضمان المقارنة الدقيقة
-            string normalizedCategoryInput = category.Trim().ToLower();
-
-
-            return await _context.Books
-                               .Where(b => b.Category != null &&
-                                           b.Category.ToLower().Contains(normalizedCategoryInput))
-                               .ToListAsync();
-        }
-
-        public async Task<Book?> GetByIdAsync(int id)
+        public async Task<Book?> GetByIdWithDetailsAsync(int id) // <<< تم تغيير الاسم
         {
             return await _context.Books
                                  .Include(b => b.Chapters)
@@ -57,12 +52,12 @@ namespace Bookify.Repositories
         public async Task<List<Book>> GetByTitlesAsync(List<string> titles)
         {
             if (titles == null || !titles.Any()) return new List<Book>();
+            return await _context.Books.Where(b => b.Title != null && titles.Contains(b.Title)).ToListAsync();
+        }
 
-            var lowerCaseTitles = titles.Select(t => t.ToLower()).ToList();
-
-            return await _context.Books
-                .Where(b => b.Title != null && lowerCaseTitles.Contains(b.Title.ToLower()))
-                .ToListAsync();
+        public async Task AddAsync(Book book) // <<< تم إضافتها
+        {
+            await _context.Books.AddAsync(book);
         }
     }
 }

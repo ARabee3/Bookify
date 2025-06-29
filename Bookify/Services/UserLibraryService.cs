@@ -32,7 +32,7 @@ namespace Bookify.Services
 
         public async Task<bool> AddBookToMyLibraryAsync(string userId, int bookId)
         {
-            var bookExists = await _bookRepository.GetByIdAsync(bookId);
+            var bookExists = await _bookRepository.GetByIdWithDetailsAsync(bookId);
             if (bookExists == null)
             {
                 return false; // الكتاب غير موجود أصلاً

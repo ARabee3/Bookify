@@ -32,7 +32,7 @@ namespace Bookify.Services
 
         public async Task<RatingDto?> AddRatingAsync(string userId, int bookId, AddRatingDto addRatingDto)
         {
-            var book = await _bookRepository.GetByIdAsync(bookId);
+            var book = await _bookRepository.GetByIdWithDetailsAsync(bookId);
             if (book == null)
             {
                 // Or throw custom exception e.g., NotFoundException
@@ -140,7 +140,7 @@ namespace Bookify.Services
 
         public async Task<IEnumerable<RatingDto>> GetRatingsForBookAsync(int bookId, int pageNumber, int pageSize)
         {
-            var book = await _bookRepository.GetByIdAsync(bookId);
+            var book = await _bookRepository.GetByIdWithDetailsAsync(bookId);
             if (book == null)
             {
                 return new List<RatingDto>(); // Book not found, return empty list

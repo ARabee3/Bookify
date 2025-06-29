@@ -44,7 +44,7 @@ namespace Bookify.Services
 
             if (createNoteDto.BookID.HasValue)
             {
-                var bookExists = await _bookRepository.GetByIdAsync(createNoteDto.BookID.Value);
+                var bookExists = await _bookRepository.GetByIdWithDetailsAsync(createNoteDto.BookID.Value);
                 if (bookExists == null)
                 {
                     // throw new ArgumentException($"Book with ID {createNoteDto.BookID.Value} not found.");

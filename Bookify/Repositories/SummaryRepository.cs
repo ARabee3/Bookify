@@ -17,27 +17,28 @@ namespace Bookify.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Summary>> GetSummariesByBookIdAsync(int bookId)
-        {
-            // نفس الكود اللي كان في Controller لجلب ملخصات الشابترات
-            return await _context.Summaries
-                             .Where(s => s.Chapter != null && s.Chapter.BookID == bookId)
-                             .ToListAsync();
-        }
-
-        public async Task<Summary?> GetSummaryByChapterIdAsync(int chapterId)
-        {
-            // نفس الكود اللي كان في Controller لجلب ملخص شابتر واحد
-            return await _context.Summaries
-                             .FirstOrDefaultAsync(s => s.ChapterID == chapterId);
-        }
-
         public async Task AddAsync(Summary summary)
         {
             await _context.Summaries.AddAsync(summary);
-            // ملاحظة: SaveChangesAsync() المفروض تتم في الـ Service أو Unit of Work Pattern
-            // لكن للتبسيط ممكن نخليها هنا مؤقتاً أو في الـ Service
-            // await _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<Summary>> GetSummariesForBookAsync(int bookId)
+        {
+            return await _context.Summaries
+                                 .Where(s => s.BookID == bookId)
+                                 .Include(s => s.Book) // لتضمين بيانات الكتاب
+                                 .Include(s => s.Chapter) // لتضمين بيانات الشابتر
+                                 .OrderBy(s => s.ChapterID) // أو CreatedAt
+                                 .ToListAsync();
+        }
+
+        public async Task<Summary?> GetSummaryForChapterAsync(int chapterId)
+        {
+            return await _context.Summaries
+                                 .Where(s => s.ChapterID == chapterId)
+                                 .Include(s => s.Book)
+                                 .Include(s => s.Chapter)
+                                 .FirstOrDefaultAsync();
         }
     }
 }

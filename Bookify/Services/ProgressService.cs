@@ -38,7 +38,7 @@ namespace Bookify.Services
 
         public async Task<ProgressDto?> UpdateOrCreateUserProgressAsync(string userId, UpdateProgressDto progressDto)
         {
-            var book = await _bookRepository.GetByIdAsync(progressDto.BookID); // يجب أن يجلب TotalPages
+            var book = await _bookRepository.GetByIdWithDetailsAsync(progressDto.BookID);
             if (book == null)
             {
                 throw new KeyNotFoundException($"Book with ID {progressDto.BookID} not found.");
