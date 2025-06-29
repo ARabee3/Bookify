@@ -4,6 +4,7 @@ using Bookify.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Bookify.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250629054832_AddStartEndPageToChapter")]
+    partial class AddStartEndPageToChapter
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -44,7 +47,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("QuestionID");
 
-                    b.ToTable("Answers", (string)null);
+                    b.ToTable("Answers");
                 });
 
             modelBuilder.Entity("Bookify.Entities.ApplicationUser", b =>
@@ -159,9 +162,6 @@ namespace Bookify.Migrations
                     b.Property<string>("Difficulty")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("IsPublic")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Language")
                         .HasColumnType("nvarchar(max)");
 
@@ -206,7 +206,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("UploadedBy");
 
-                    b.ToTable("Books", (string)null);
+                    b.ToTable("Books");
                 });
 
             modelBuilder.Entity("Bookify.Entities.Chapter", b =>
@@ -237,7 +237,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("BookID");
 
-                    b.ToTable("Chapters", (string)null);
+                    b.ToTable("Chapters");
                 });
 
             modelBuilder.Entity("Bookify.Entities.Participant", b =>
@@ -267,7 +267,7 @@ namespace Bookify.Migrations
                     b.HasIndex("SpaceId", "AgoraUid")
                         .IsUnique();
 
-                    b.ToTable("Participants", (string)null);
+                    b.ToTable("Participants");
                 });
 
             modelBuilder.Entity("Bookify.Entities.Progress", b =>
@@ -315,7 +315,7 @@ namespace Bookify.Migrations
                     b.HasIndex("UserID", "BookID")
                         .IsUnique();
 
-                    b.ToTable("Progresses", (string)null);
+                    b.ToTable("Progresses");
                 });
 
             modelBuilder.Entity("Bookify.Entities.Question", b =>
@@ -337,7 +337,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("QuizID");
 
-                    b.ToTable("Questions", (string)null);
+                    b.ToTable("Questions");
                 });
 
             modelBuilder.Entity("Bookify.Entities.Quiz", b =>
@@ -366,7 +366,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("ChapterID");
 
-                    b.ToTable("Quizzes", (string)null);
+                    b.ToTable("Quizzes");
                 });
 
             modelBuilder.Entity("Bookify.Entities.ReadingChallenge", b =>
@@ -395,7 +395,7 @@ namespace Bookify.Migrations
                     b.HasIndex("UserID", "Year")
                         .IsUnique();
 
-                    b.ToTable("ReadingChallenges", (string)null);
+                    b.ToTable("ReadingChallenges");
                 });
 
             modelBuilder.Entity("Bookify.Entities.Recommendation", b =>
@@ -422,7 +422,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("UserID");
 
-                    b.ToTable("Recommendations", (string)null);
+                    b.ToTable("Recommendations");
                 });
 
             modelBuilder.Entity("Bookify.Entities.Space", b =>
@@ -450,7 +450,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("HostId");
 
-                    b.ToTable("Spaces", (string)null);
+                    b.ToTable("Spaces");
                 });
 
             modelBuilder.Entity("Bookify.Entities.Summary", b =>
@@ -493,7 +493,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("UserID");
 
-                    b.ToTable("Summaries", (string)null);
+                    b.ToTable("Summaries");
                 });
 
             modelBuilder.Entity("Bookify.Entities.UserDailyActivityLog", b =>
@@ -516,7 +516,7 @@ namespace Bookify.Migrations
                     b.HasIndex("UserID", "ActivityDate")
                         .IsUnique();
 
-                    b.ToTable("UserDailyActivityLogs", (string)null);
+                    b.ToTable("UserDailyActivityLogs");
                 });
 
             modelBuilder.Entity("Bookify.Entities.UserLibraryBook", b =>
@@ -534,7 +534,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("BookID");
 
-                    b.ToTable("UserLibraryBooks", (string)null);
+                    b.ToTable("UserLibraryBooks");
                 });
 
             modelBuilder.Entity("Bookify.Entities.UserNote", b =>
@@ -574,7 +574,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("UserID");
 
-                    b.ToTable("UserNotes", (string)null);
+                    b.ToTable("UserNotes");
                 });
 
             modelBuilder.Entity("Bookify.Entities.UserQuizResult", b =>
@@ -604,7 +604,7 @@ namespace Bookify.Migrations
 
                     b.HasIndex("UserID");
 
-                    b.ToTable("UserQuizResults", (string)null);
+                    b.ToTable("UserQuizResults");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -771,7 +771,7 @@ namespace Bookify.Migrations
                     b.HasIndex("UserID", "BookID")
                         .IsUnique();
 
-                    b.ToTable("UserBookRatings", (string)null);
+                    b.ToTable("UserBookRatings");
                 });
 
             modelBuilder.Entity("Bookify.Entities.Answer", b =>

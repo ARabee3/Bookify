@@ -21,21 +21,82 @@ namespace Bookify.Services
         private readonly IAiContentService _aiContentService;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly AppDbContext _context;
+        private readonly IPdfProcessorService _pdfProcessorService;
 
         public SummaryService(
             ISummaryRepository summaryRepository,
             IChapterRepository chapterRepository,
             IAiContentService aiContentService,
             IWebHostEnvironment webHostEnvironment,
-            AppDbContext context)
+            AppDbContext context,
+            IPdfProcessorService pdfProcessorService
+            )
         {
             _summaryRepository = summaryRepository;
             _chapterRepository = chapterRepository;
             _aiContentService = aiContentService;
             _webHostEnvironment = webHostEnvironment;
             _context = context;
+            _pdfProcessorService = pdfProcessorService;
         }
 
+        public async Task<SummaryDto?> GetOrCreateSummaryForChapterAsync(int chapterId)
+        {
+            // 1. Check if the summary already exists in the database.
+            var existingSummary = await _context.Summaries
+                .FirstOrDefaultAsync(s => s.ChapterID == chapterId);
+
+            if (existingSummary != null)
+            {
+                // If it exists, return it immediately. This is fast.
+                return new SummaryDto { Content = existingSummary.Content };
+            }
+
+            // 2. If it doesn't exist, we need to generate it.
+            var chapter = await _context.Chapters
+                .Include(c => c.Book)
+                .FirstOrDefaultAsync(c => c.ChapterID == chapterId);
+
+            if (chapter == null || chapter.Book?.PdfFilePath == null)
+            {
+                return null; // Chapter or associated book/PDF not found.
+            }
+
+            // 3. Get the PDF file from storage
+            var fullPath = Path.Combine(_webHostEnvironment.WebRootPath, chapter.Book.PdfFilePath.TrimStart('/'));
+            if (!File.Exists(fullPath))
+            {
+                throw new FileNotFoundException("The book's PDF file could not be found on the server.");
+            }
+
+            IFormFile pdfFile;
+            await using (var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read))
+            {
+                pdfFile = new FormFile(stream, 0, stream.Length, "file", Path.GetFileName(fullPath));
+
+                // 4. Call the AI service to generate the summary. This is the slow part (first time only).
+                var summaryData = await _pdfProcessorService.SummarizeChapterAsync(pdfFile, chapter.ChapterNumber);
+                if (summaryData == null || string.IsNullOrEmpty(summaryData.Summary))
+                {
+                    return null; // AI failed to generate a summary.
+                }
+
+                // 5. Save the new summary to the database for future requests.
+                var newSummary = new Summary
+                {
+                    BookID = chapter.BookID,
+                    ChapterID = chapter.ChapterID,
+                    Content = summaryData.Summary,
+                    Source = "AI_V2_OnDemand",
+                    CreateDate = System.DateTime.UtcNow
+                };
+                _context.Summaries.Add(newSummary);
+                await _context.SaveChangesAsync();
+
+                // 6. Return the newly created summary.
+                return new SummaryDto { Content = newSummary.Content };
+            }
+        }
         public async Task<SummaryDto?> GenerateAndSaveSummaryForChapterAsync(int chapterId)
         {
             var chapter = await _chapterRepository.GetByIdAsync(chapterId); // يفترض أن GetByIdAsync يجلب معه الكتاب

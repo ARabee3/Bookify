@@ -62,8 +62,17 @@ namespace Bookify.Services
 
         public async Task<BookDetailDto?> GetBookByIdAsync(int id, string? currentUserId = null)
         {
-            var bookEntity = await _bookRepository.GetByIdWithDetailsAsync(id); // Using a more descriptive method name
+            var bookEntity = await _bookRepository.GetByIdWithDetailsAsync(id);
             if (bookEntity == null) return null;
+
+            // Security Check:
+            // Allow access if the book is public OR if the user is the one who uploaded it.
+            if (!bookEntity.IsPublic && bookEntity.UploadedBy != currentUserId)
+            {
+                // User is trying to access a private book they do not own.
+                return null;
+            }
+
             return MapBookToDetailDto(bookEntity);
         }
 

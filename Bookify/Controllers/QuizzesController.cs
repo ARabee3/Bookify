@@ -1,83 +1,63 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Bookify.Contexts;
 using Bookify.Entities;
-using Bookify.Contexts;
-using Bookify.Entities;
 using Bookify.DTOs;
+using Bookify.Interfaces; // <<< Add this
+using Microsoft.AspNetCore.Authorization; // <<< Add this
+using System.Threading.Tasks; // <<< Add this
 
 namespace Bookify.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api")] // Change route to be more RESTful
     [ApiController]
     public class QuizzesController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IBookProcessingService _bookProcessingService; // <<< Add this
 
-        public QuizzesController(AppDbContext context)
+        public QuizzesController(AppDbContext context, IBookProcessingService bookProcessingService) // <<< Modify constructor
         {
             _context = context;
+            _bookProcessingService = bookProcessingService; // <<< Add this
         }
 
-        [HttpPost]
-        // استخدم async Task<IActionResult> عشان الأداء يبقى أفضل
-        public async Task<IActionResult> AddQuiz(int bookId, int? chapterId, bool isFinal, List<QuestionDto> questions)
+        // --- NEW ENDPOINT FOR ON-THE-FLY QUIZ GENERATION ---
+        [HttpGet("chapters/{chapterId}/quiz")]
+        [Authorize]
+        public async Task<IActionResult> GenerateQuizForChapter(int chapterId)
         {
-            // --- تحقق مبدئي (مثال) ---
-            if (questions == null || !questions.Any())
+            try
             {
-                return BadRequest("Quiz must have at least one question.");
-            }
-            // TODO: ممكن تتحقق لو الـ bookId أو chapterId موجودين فعلاً في الداتابيز
-
-            var quiz = new Quiz
-            {
-                BookID = bookId,
-                ChapterID = chapterId,
-                IsFinal = isFinal,
-                CreatedDate = DateTime.UtcNow // الأفضل استخدام UtcNow للسيرفر
-            };
-
-            // --- الجزء ده هيتغير ---
-            foreach (var questionDto in questions)
-            {
-                if (questionDto.Answers == null || !questionDto.Answers.Any())
+                var quizDto = await _bookProcessingService.GenerateQuizForChapterAsync(chapterId);
+                if (quizDto == null)
                 {
-                    // ممكن تتجاهل السؤال ده أو ترجع خطأ
-                    continue; // نتجاهله مؤقتاً
+                    return NotFound("Could not generate a quiz for this chapter. The chapter may not exist or the AI service failed.");
                 }
-
-                var newQuestion = new Question
-                {
-                    Text = questionDto.Text,
-                    Quiz = quiz // اربط السؤال بالكويز مباشرة هنا أسهل
-                };
-
-                // لوب على الإجابات اللي جاية في الـ DTO
-                foreach (var answerDto in questionDto.Answers)
-                {
-                    newQuestion.Answers.Add(new Answer
-                    {
-                        Text = answerDto.Text,
-                        IsCorrect = answerDto.IsCorrect,
-                        Question = newQuestion // اربط الإجابة بالسؤال الجديد
-                    });
-                }
-                // مش محتاجين نضيف newQuestion لـ quiz.Questions هنا
-                // لأن EF Core هيعرف إنها مرتبطة بالكويز لما نضيف الكويز نفسه
-                // وهو هيضيف الأسئلة والإجابات بالتبعية (Cascade)
+                return Ok(quizDto);
             }
-            // --- نهاية الجزء المتغير ---
+            catch (System.Collections.Generic.KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (System.IO.FileNotFoundException ex)
+            {
+                // Do not expose file paths to the client
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Book content is missing on the server." });
+            }
+            catch (Exception ex)
+            {
+                // Log the full exception ex.ToString()
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred while generating the quiz." });
+            }
+        }
 
-
-            // استخدام async methods
+        // --- OLD METHOD (Can be kept or removed) ---
+        [HttpPost("quizzes")] // Kept old route for compatibility
+        public async Task<IActionResult> AddQuiz([FromBody] Quiz quiz) // Simplified for example
+        {
             await _context.Quizzes.AddAsync(quiz);
             await _context.SaveChangesAsync();
-
-            // الأفضل نرجع الكويز اللي اتعمل أو لينك ليه بدل مجرد رسالة
-            // return CreatedAtAction(nameof(GetQuizById), new { id = quiz.QuizID }, quiz); // (محتاج تعمل ميثود GetQuizById الأول)
-            return Ok("Quiz added successfully!"); // أو نكتفي بدي مؤقتاً
+            return Ok("Quiz added successfully!");
         }
     }
-
-    
 }

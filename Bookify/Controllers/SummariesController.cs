@@ -25,17 +25,31 @@ namespace Bookify.Controllers
             return Ok(summaries);
         }
 
-        [HttpGet("chapter/{chapterId}")]
+      
+        [HttpGet("chapters/{chapterId}/summary")]
         public async Task<IActionResult> GetSummaryForChapter(int chapterId)
         {
-            var summary = await _summaryService.GetSummaryForChapterAsync(chapterId);
-            if (summary is null) // <<< استخدام is null أكثر أماناً
+            try
             {
-                return NotFound($"No summary found for chapter with ID {chapterId}.");
-            }
-            return Ok(summary);
-        }
+                var summaryDto = await _summaryService.GetOrCreateSummaryForChapterAsync(chapterId);
 
+                if (summaryDto == null)
+                {
+                    return NotFound(new { message = "A summary could not be found or generated for this chapter." });
+                }
+
+                return Ok(summaryDto);
+            }
+            catch (System.IO.FileNotFoundException)
+            {
+                return StatusCode(500, new { message = "Book content is missing on the server and summary could not be generated." });
+            }
+            catch (System.Exception ex)
+            {
+                // Log the exception (ex)
+                return StatusCode(500, new { message = "An unexpected error occurred." });
+            }
+        }
         [HttpPost("generate/chapter/{chapterId}")]
         [Authorize] // Admin-only?
         public async Task<IActionResult> GenerateSummary(int chapterId)

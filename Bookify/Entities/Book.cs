@@ -24,7 +24,8 @@ namespace Bookify.Entities
         public string? CoverImagePath { get; set; }
         public int? TotalPages { get; set; }
 
-
+        [Required]
+        public bool IsPublic { get; set; } = false; // Default to private
 
         public int? Views { get; set; }
         public string? Language { get; set; }

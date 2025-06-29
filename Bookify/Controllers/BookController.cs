@@ -18,13 +18,22 @@ namespace Bookify.Controllers
     {
         private readonly IBookService _bookService;
         private readonly IAiRecommendationService _aiRecommendationService;
+        private readonly IBookProcessingService _bookProcessingService;
+        private readonly ILogger<BooksController> _logger;
 
         public BooksController(
             IBookService bookService,
-            IAiRecommendationService aiRecommendationService)
+            IAiRecommendationService aiRecommendationService,
+            IBookProcessingService bookProcessingService,
+            ILogger<BooksController> logger
+            
+
+            )
         {
             _bookService = bookService;
             _aiRecommendationService = aiRecommendationService;
+            _bookProcessingService = bookProcessingService;
+            _logger = logger;
         }
 
         // --- Endpoint لجلب الكتب مع فلترة و Pagination ---
@@ -43,26 +52,48 @@ namespace Bookify.Controllers
             }
         }
 
-        // --- Endpoint لجلب كتاب واحد بالـ ID ---
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")] // Make sure the :int constraint is here!
+        [ActionName(nameof(GetBookByIdAsync))] // Explicitly name the action for CreatedAtAction
         public async Task<IActionResult> GetBookByIdAsync(int id)
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var book = await _bookService.GetBookByIdAsync(id, currentUserId);
+            if (book == null)
+            {
+                return NotFound();
+            }
+            return Ok(book);
+        }
+        [HttpPost("process-upload")]
+        [Authorize]
+        [RequestSizeLimit(100_000_000)]
+        public async Task<IActionResult> ProcessUploadedBook(IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No file provided.");
+            if (Path.GetExtension(file.FileName).ToLower() != ".pdf") return BadRequest("Only PDF files are allowed.");
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized(); // Should be handled by [Authorize] but good practice
+
+            _logger.LogInformation("Starting book processing for user {UserId} and file {FileName}", userId, file.FileName);
+
             try
             {
-                var bookDetail = await _bookService.GetBookByIdAsync(id);
-                if (bookDetail == null)
+                var resultDto = await _bookProcessingService.ProcessUploadedBookAsync(file, userId);
+                if (resultDto == null)
                 {
-                    return NotFound($"Book with ID {id} not found.");
+                    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to process the uploaded book.");
                 }
-                return Ok(bookDetail);
+
+                // This now works because we are in the same controller as GetBookByIdAsync
+                return CreatedAtAction(nameof(GetBookByIdAsync), new { id = resultDto.BookID }, resultDto);
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                Console.WriteLine($"Error getting book {id}: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the book.");
+                _logger.LogError(ex, "Error processing book for user {UserId}", userId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred during book processing.");
             }
         }
-
         // --- Endpoint لرفع كتاب ومعالجته ---
         [HttpPost("upload")]
         [Authorize]

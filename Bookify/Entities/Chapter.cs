@@ -8,6 +8,8 @@ namespace Bookify.Entities
         public string Title { get; set; }
         public int ChapterNumber { get; set; }
 
+        public int? StartPage { get; set; }
+        public int? EndPage { get; set; }
         public int BookID { get; set; }
         public Book Book { get; set; }
         public ICollection<Quiz> Quizzes { get; set; } = new List<Quiz>();

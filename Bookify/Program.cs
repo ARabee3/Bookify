@@ -28,37 +28,40 @@ namespace Bookify
             builder.Services.AddEndpointsApiExplorer();
 
             // 2. إعداد Swagger لدعم JWT
+            // --- MODIFY THIS SECTION ---
+            // Replace the simple builder.Services.AddSwaggerGen(); with this detailed block.
             builder.Services.AddSwaggerGen(options =>
             {
+                // A general description for your API
                 options.SwaggerDoc("v1", new OpenApiInfo { Title = "Bookify API", Version = "v1" });
-                options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme,
-                    new OpenApiSecurityScheme
-                    {
-                        Name = "Authorization",
-                        Description = "JWT Authorization header using the Bearer scheme. \r\n\r\n Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\nExample: \"Bearer 12345abcdef\"",
-                        In = ParameterLocation.Header,
-                        Type = SecuritySchemeType.ApiKey,
-                        Scheme = JwtBearerDefaults.AuthenticationScheme
-                    });
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = JwtBearerDefaults.AuthenticationScheme
-                            },
-                            Scheme = "oauth2",
-                            Name = JwtBearerDefaults.AuthenticationScheme,
-                            In = ParameterLocation.Header
-                        },
-                        new List<string>()
-                    }
-                });
-            });
 
+                // 1. Define the JWT Bearer security scheme
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    In = ParameterLocation.Header,
+                    Description = "Please enter a valid token. \n\nExample: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'",
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    BearerFormat = "JWT",
+                    Scheme = "Bearer"
+                });
+
+                // 2. Make sure Swagger uses the Bearer token
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[]{}
+        }
+    });
+            });
             // 3. تسجيل الـ DbContext
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -107,6 +110,7 @@ namespace Bookify
             builder.Services.AddScoped<IEmailSender, EmailSender>(); // خدمة الإيميل
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddSingleton<AgoraService>();
+            builder.Services.AddScoped<IBookProcessingService, BookProcessingService>();
 
             builder.Services.AddSignalR();
             builder.Services.AddCors(options =>
@@ -124,6 +128,7 @@ namespace Bookify
 
             builder.Services.AddScoped<IRatingRepository, RatingRepository>();
             builder.Services.AddScoped<IRatingService, RatingService>();
+            builder.Services.AddScoped<ISummaryService, SummaryService>(); // <<< ADD THIS LINE
 
 
             builder.Services.AddScoped<IUserNoteRepository, UserNoteRepository>();
@@ -158,12 +163,13 @@ namespace Bookify
 
 
 
-            builder.Services.AddHttpClient<IAiRecommendationService, AiRecommendationService>(client =>
+            builder.Services.AddHttpClient<IPdfProcessorService, PdfProcessorService>(client =>
             {
-                string? aiApiBaseUrl = builder.Configuration.GetSection("AiApiSettings")["BaseUrl"];
+                // Use the new configuration section
+                string? aiApiBaseUrl = builder.Configuration.GetSection("PdfProcessorApiSettings")["BaseUrl"];
                 if (string.IsNullOrEmpty(aiApiBaseUrl))
                 {
-                    throw new InvalidOperationException("AI API Base URL is not configured in appsettings.json (AiApiSettings:BaseUrl)");
+                    throw new InvalidOperationException("PDF Processor API Base URL is not configured in appsettings.json (PdfProcessorApiSettings:BaseUrl)");
                 }
                 client.BaseAddress = new Uri(aiApiBaseUrl);
             });

@@ -20,9 +20,10 @@ namespace Bookify.Repositories
 
         public async Task<(IEnumerable<Book> books, int totalCount)> GetAllFilteredAndPaginatedAsync(BookFilterDto filter)
         {
-            var query = _context.Books.AsQueryable();
+            var query = _context.Books.Where(b => b.IsPublic).AsQueryable();
+            // -----------------------------------------------------------
 
-            // تطبيق الفلترة
+            // تطبيق الفلترة (Filtering)
             if (!string.IsNullOrEmpty(filter.Category))
             {
                 query = query.Where(b => b.Category != null && b.Category.ToLower() == filter.Category.ToLower());
@@ -32,7 +33,6 @@ namespace Bookify.Repositories
             // حساب العدد الكلي (قبل الـ Pagination)
             var totalCount = await query.CountAsync();
 
-            // تطبيق الـ Pagination
             var books = await query
                               .Skip((filter.PageNumber - 1) * filter.PageSize)
                               .Take(filter.PageSize)
@@ -52,7 +52,10 @@ namespace Bookify.Repositories
         public async Task<List<Book>> GetByTitlesAsync(List<string> titles)
         {
             if (titles == null || !titles.Any()) return new List<Book>();
-            return await _context.Books.Where(b => b.Title != null && titles.Contains(b.Title)).ToListAsync();
+
+            return await _context.Books
+                .Where(b => b.IsPublic && b.Title != null && titles.Contains(b.Title))
+                .ToListAsync();
         }
 
         public async Task AddAsync(Book book) // <<< تم إضافتها
